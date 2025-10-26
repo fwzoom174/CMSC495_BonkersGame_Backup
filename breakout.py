@@ -2,7 +2,9 @@ import sys
 import pygame
 from pygame import Rect
 
-screen_width, screen_height = 800, 600
+clock = pygame.time.Clock()
+delta_time = 1
+screen_width, screen_height = 1200, 900
 
 # Set up colors
 BLACK = (0, 0, 0)
@@ -125,6 +127,7 @@ def show_instructions(screen):
         pygame.time.Clock().tick(60)
 
 def main_controller():
+    global delta_time
     level = 0
 
     # Set up the screen
@@ -142,14 +145,11 @@ def main_controller():
     bar_y = screen_height - bar_height - 50
     speed = 5
 
-    # Set up the initial position and speed of the ball
-    ball_x = screen_width // 2
-    ball_y = screen_height // 2
+    # Set up the initial position and velocity of the ball
     ball_radius = 10
-    ball_speed_x = 5
-    ball_speed_y = 5
-    ball_direction_x = 0
-    ball_direction_y = 1
+    ball_position = pygame.Vector2(screen_width // 2, screen_height // 2)
+    ball_velocity = pygame.Vector2(0, 5)
+    ball_max_velocity_x = 5
 
     # Generate the block layout
     blocks = define_blocks(level)
@@ -157,10 +157,10 @@ def main_controller():
     running = True
     while running:
         # Constrain the ball to the screen bounds
-        if ball_x + ball_radius >= screen_width or ball_x - ball_radius <= 0:
-            ball_direction_x *= -1
-        if ball_y - ball_radius <= 0:
-            ball_direction_y *= -1
+        if ball_position.x + ball_radius >= screen_width or ball_position.x - ball_radius <= 0:
+            ball_velocity.x *= -1
+        if ball_position.y - ball_radius <= 0:
+            ball_velocity.y *= -1
 
         # Event handling
         for event in pygame.event.get():
@@ -183,24 +183,22 @@ def main_controller():
         bar = pygame.draw.rect(screen, RED, (bar_x, bar_y, bar_width, bar_height))
 
         # Save previous ball position and move the ball
-        prev_x, prev_y = ball_x, ball_y
-        ball_x += int(ball_speed_x * ball_direction_x)
-        ball_y += int(ball_speed_y * ball_direction_y)
-
-        # Draw the ball
-        ball = pygame.draw.circle(screen, WHITE, (ball_x, ball_y), ball_radius)
+        prev_x, prev_y = ball_position.x, ball_position.y
+        ball_position.move_towards_ip(ball_position + ball_velocity, 10)
+        ball = pygame.draw.circle(screen, WHITE, ball_position, ball_radius)
 
         # Is the ball touching the paddle
         if bar.colliderect(ball):
-            if bar.centerx > ball.centerx + 10:
-                ball_direction_x = -0.5
-            elif bar.centerx < ball.centerx - 10:
-                ball_direction_x = 0.5
-            else:
-                ball_direction_x = 0
-            ball_direction_y *= -1
+            # Calculate where on the paddle the ball collided. Invert it so positive offset is right and negative is left
+            ball_offset = (bar.centerx - ball.centerx) * -1
+            # Using the max x velocity, determine how much weight to apply to the offset to set an appropriate x speed
+            ratio = ball_max_velocity_x / (bar_width / 2)
+            # Set the x velocity based on the offset and ratio
+            ball_velocity.x = ball_offset * ratio
+            # Send the ball back up
+            ball_velocity.y *= -1
             # Nudge the ball above the paddle to avoid sticking
-            ball_y = bar.top - ball_radius - 1
+            ball_position.y = bar.top - ball_radius - 1
 
         # Draw the blocks and check for collisions
         for block in blocks[:]:
@@ -208,29 +206,29 @@ def main_controller():
             if block.rect.colliderect(ball):
                 hit_vertical = prev_y <= block.rect.top or prev_y >= block.rect.bottom
                 if hit_vertical:
-                    ball_direction_y *= -1
+                    ball_velocity.y *= -1
                     if prev_y <= block.rect.top:
-                        ball_y = block.rect.top - ball_radius - 1
+                        ball_position.y = block.rect.top - ball_radius - 1
                     else:
-                        ball_y = block.rect.bottom + ball_radius + 1
+                        ball_position.y = block.rect.bottom + ball_radius + 1
                 else:
-                    ball_direction_x *= -1
+                    ball_velocity.x *= -1
                     if prev_x <= block.rect.left:
-                        ball_x = block.rect.left - ball_radius - 1
+                        ball_position.x = block.rect.left - ball_radius - 1
                     else:
-                        ball_x = block.rect.right + ball_radius + 1
+                        ball_position.x = block.rect.right + ball_radius + 1
                 blocks.remove(block)
 
         # Check if the ball goes below the paddle
-        if ball_y - ball_radius > screen_height:
+        if ball_position.y - ball_radius > screen_height:
             lives -= 1
             if lives > 0:
                 # Reset ball and paddle
-                ball_x = screen_width // 2
-                ball_y = screen_height // 2
+                ball_position.x = screen_width // 2
+                ball_position.y = screen_height // 2
                 bar_x = (screen_width - bar_width) // 2
-                ball_direction_x = 0
-                ball_direction_y = 1
+                ball_velocity.x = 0
+                ball_velocity.y = 5
 
                 # Show "Life lost" message and wait 3 seconds
                 message = font.render(f"Lives left: {lives}", True, WHITE)
@@ -248,8 +246,8 @@ def main_controller():
         # Update the display
         pygame.display.flip()
 
-        # Cap the frame rate
-        pygame.time.Clock().tick(60)
+        # Useful in performing motion over time calculations - e.g. falling power ups?
+        delta_time = clock.tick(60)
 
     # Quit Pygame
     pygame.quit()
@@ -272,7 +270,7 @@ def define_blocks(level):
     color_list = [RED, (255, 165, 0), YELLOW, GREEN, BLUE, PURPLE, CYAN]
 
     if level == 0:
-        num_blocks = 66
+        num_blocks = 68
 
     column = 0
 
