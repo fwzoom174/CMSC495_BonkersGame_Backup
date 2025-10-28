@@ -4,6 +4,7 @@ import common
 
 from common import BLACK, WHITE, RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, CYAN
 from objects.block import Block
+from objects.scoreboard import ScoreBoard
 
 clock = pygame.time.Clock()
 delta_time = 1
@@ -17,9 +18,9 @@ def main_controller(screen):
     # Set up the screen
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption("Breakout Game")
+    # Initialize the scoreboard for tracking score, lives, and high score
+    scoreboard = ScoreBoard(screen)
 
-    # Set up lives and font
-    lives = 3
     font = pygame.font.Font(None, 36)
 
     # Set up the initial position and speed of the paddle
@@ -102,11 +103,13 @@ def main_controller(screen):
                     else:
                         ball_position.x = block.rect.right + ball_radius + 1
                 blocks.remove(block)
+                # Add points when a block is destroyed
+                scoreboard.add_points(50)
 
         # Check if the ball goes below the paddle
         if ball_position.y - ball_radius > screen_height:
-            lives -= 1
-            if lives > 0:
+            scoreboard.lose_life()
+            if scoreboard.lives > 0:
                 # Reset ball and paddle
                 ball_position.x = screen_width // 2
                 ball_position.y = screen_height // 2
@@ -115,11 +118,12 @@ def main_controller(screen):
                 ball_velocity.y = 5
 
                 # Show "Life lost" message and wait 3 seconds
-                message = font.render(f"Lives left: {lives}", True, WHITE)
+                message = font.render(f"Lives Left: {scoreboard.lives}", True, WHITE)
                 screen.blit(message, (screen_width // 2 - message.get_width() // 2, screen_height // 2))
                 pygame.display.flip()
                 pygame.time.wait(3000)
             else:
+                scoreboard.save_high_score()
                 # Out of lives, end game
                 running = False
 
@@ -127,11 +131,17 @@ def main_controller(screen):
         if len(blocks) == 0:
             running = False
 
+        # Draw scoreboard elements (score, lives, and high score)
+        scoreboard.draw()
+
         # Update the display
         pygame.display.flip()
 
         # Useful in performing motion over time calculations - e.g. falling power ups?
         delta_time = clock.tick(60)
+
+    # Save high score at the end of the game
+    scoreboard.save_high_score()
 
     # Quit Pygame
     pygame.quit()
