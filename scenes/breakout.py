@@ -9,6 +9,20 @@ from scenes.win_lose import end_screen
 clock = pygame.time.Clock()
 delta_time = 1
 
+# Initialize the mixer for sound
+pygame.mixer.init()
+
+# Load sound effects
+try:
+    wall_sound = pygame.mixer.Sound("media/audio/media_audio_wall-hit.wav")
+    paddle_sound = pygame.mixer.Sound("media/audio/media_audio_paddle-hit.wav")
+    brick_sound = pygame.mixer.Sound("media/audio/media_audio_brick-hit.ogg")
+except:
+    print("Warning: Could not load sound files. Game will run without sound.")
+    wall_sound = None
+    paddle_sound = None
+    brick_sound = None
+
 def main_controller(screen, debug_mode=False):
     global delta_time
     level = 1
@@ -55,8 +69,15 @@ def main_controller(screen, debug_mode=False):
         # Constrain the ball to the screen bounds
         if ball_position.x + ball_radius >= SCREEN_WIDTH or ball_position.x - ball_radius <= 0:
             ball_velocity.x *= -1
+            # PLAY WALL SOUND
+            if wall_sound:
+                wall_sound.play()
+
         if ball_position.y - ball_radius <= 0:
             ball_velocity.y *= -1
+            # PLAY WALL SOUND
+            if wall_sound:
+                wall_sound.play()
 
         # Event handling
         for event in pygame.event.get():
@@ -91,6 +112,9 @@ def main_controller(screen, debug_mode=False):
                 ball_velocity.y *= -1
                 # Nudge the ball above the paddle to avoid sticking
                 ball_position.y = bar.top - ball_radius - 1
+                # PLAY PADDLE SOUND
+                if paddle_sound:
+                    paddle_sound.play()
 
         # Draw the blocks and check for collisions
         for block in blocks:
@@ -112,6 +136,9 @@ def main_controller(screen, debug_mode=False):
                 blocks.remove(block)
                 # Add points when a block is destroyed
                 scoreboard.add_points(50)
+                # PLAY BRICK SOUND
+                if brick_sound:
+                    brick_sound.play()
 
         # Check if the ball goes below the paddle
         if ball_position.y - ball_radius > SCREEN_HEIGHT:
