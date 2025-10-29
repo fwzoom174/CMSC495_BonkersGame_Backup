@@ -8,7 +8,7 @@ from common import BLACK, WHITE, RED, BLUE
 
 clock = pygame.time.Clock()
 delta_time = 1
-screen_width, screen_height = common.screen_width, common.screen_height
+screen_width, screen_height = common.SCREEN_WIDTH, common.SCREEN_HEIGHT
 level = 1
 alive = True
 score = 0
@@ -111,4 +111,4 @@ def create_obstacles():
 if __name__ == "__main__":
     pygame.init()
     pygame.font.init()
-    main_controller(pygame.display.set_mode((common.screen_width, common.screen_height)))
+    main_controller(pygame.display.set_mode((common.SCREEN_WIDTH, common.SCREEN_HEIGHT)))

@@ -1,6 +1,6 @@
 import pygame
 
-screen_width, screen_height = 1200, 900
+SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 900
 
 # Set up colors
 BLACK = (0, 0, 0)

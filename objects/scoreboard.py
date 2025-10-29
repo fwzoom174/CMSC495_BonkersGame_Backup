@@ -4,7 +4,7 @@
 
 import pygame
 import os
-from common import screen_width as SCREEN_WIDTH, screen_height as SCREEN_HEIGHT
+from common import SCREEN_WIDTH, SCREEN_HEIGHT
 
 # Constants for block spacing (used for visual alignment)
 BLOCK_WIDTH = 60

@@ -10,6 +10,7 @@ def show_instructions(screen):
 
     # Display the list of controls and instructions
     instructions = [
+        "Use the SPACE bar to launch the ball on a new life.",
         "Use the arrow keys or A/D to move the paddle.",
         "Bounce the ball to break all the blocks.",
         "You have 3 lives. The game ends when they run out.",
