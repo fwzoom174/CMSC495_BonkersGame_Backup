@@ -5,6 +5,7 @@ from common import BLACK, WHITE, RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, CYAN,
 from objects.block import Block
 from objects.scoreboard import ScoreBoard
 from scenes.win_lose import end_screen
+from objects.timer import Timer  # Added import for new timer feature
 
 clock = pygame.time.Clock()
 delta_time = 1
@@ -23,6 +24,7 @@ except:
     paddle_sound = None
     brick_sound = None
 
+
 def main_controller(screen, debug_mode=False):
     global delta_time
     level = 1
@@ -35,6 +37,11 @@ def main_controller(screen, debug_mode=False):
     if debug_mode:
         level = 0
         scoreboard.lives = 1
+
+    # Added timer setup (stopwatch for normal, countdown for challenge mode)
+    timer = Timer(screen, mode="stopwatch")  # default
+    if debug_mode == "countdown":
+        timer = Timer(screen, mode="countdown", countdown_time=10)
 
     font = pygame.font.Font(None, 36)
 
@@ -84,9 +91,11 @@ def main_controller(screen, debug_mode=False):
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
+                # Timer now starts when space is pressed for first ball launch
                 if event.key is pygame.K_SPACE and ball_velocity.y == 0:
                     ball_velocity.x = get_x_velocity(bar, ball, ball_max_velocity_x, bar_width)
                     ball_velocity.y = -5
+                    timer.resume()  # starts or resumes the timer
 
         # Key presses handling
         keys = pygame.key.get_pressed()
@@ -143,6 +152,7 @@ def main_controller(screen, debug_mode=False):
         # Check if the ball goes below the paddle
         if ball_position.y - ball_radius > SCREEN_HEIGHT:
             scoreboard.lose_life()
+            timer.pause()  # pause timer when a life is lost
             if scoreboard.lives > 0:
                 # Reset ball and paddle
                 ball_position = pygame.Vector2(SCREEN_WIDTH // 2, bar_y - ball_radius - 1)
@@ -156,16 +166,27 @@ def main_controller(screen, debug_mode=False):
                 pygame.display.flip()
                 pygame.time.wait(3000)
             else:
+                timer.pause()  # stop timer on final life loss
                 # Out of lives, end game
                 running = False
 
         # End the game if all blocks are cleared
         if len(blocks) == 0:
+            timer.pause()  # pause timer when level is cleared
             running = False
             win = True
 
         # Draw scoreboard elements (score, lives, and high score)
         scoreboard.draw()
+
+        # Added timer update and draw calls (shows elapsed or countdown)
+        timer.update()
+        timer.draw()
+
+        # Check if countdown time has run out (for countdown mode)
+        if debug_mode == "countdown" and timer.get_time() <= 0:
+            scoreboard.lives = 0
+            running = False
 
         # Update the display
         pygame.display.flip()
@@ -173,11 +194,10 @@ def main_controller(screen, debug_mode=False):
         # Useful in performing motion over time calculations - e.g. falling power ups?
         delta_time = clock.tick(60)
 
-    # Save high score at the end of the game
-    scoreboard.save_high_score()
-
-    # Show Win/Lose Screen
-    return end_screen(screen, win, scoreboard.score)
+    # Added initials handling from win_lose screen + high score save with time
+    replay, initials = end_screen(screen, win, scoreboard.score)
+    scoreboard.save_high_score(initials=initials, current_time=timer.get_time())
+    return replay
 
 
 def get_x_velocity(bar, ball, ball_max_velocity_x, bar_width):
@@ -225,6 +245,7 @@ def define_blocks(screen, level):
         column += 1
 
     return blocks
+
 
 def play(screen, debug_mode=False):
     return main_controller(screen, debug_mode)
