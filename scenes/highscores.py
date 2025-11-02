@@ -1,18 +1,16 @@
 import pygame
 import os
 import sys
-from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW, ORANGE
+from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW
 from scenes.win_lose import draw_retro_background
+from datetime import datetime, timezone, timedelta
 
-# Initialize pygame font
 pygame.font.init()
 
-# Load custom retro font
 def load_custom_font(size):
     font_path = os.path.join(os.path.dirname(__file__), "..", "media", "graphics", "font", "Pixeboy.ttf")
     return pygame.font.Font(font_path, size)
 
-# Read and sort score data from text file
 def load_scores(file_path):
     scores = []
     if not os.path.exists(file_path):
@@ -20,84 +18,120 @@ def load_scores(file_path):
     with open(file_path, "r") as f:
         for line in f.readlines():
             parts = line.strip().split()
-            if len(parts) == 3:  # format: initials, score, time
+            if len(parts) == 3:
                 initials, score, time = parts
                 scores.append((initials.upper(), int(score), float(time)))
-    # Sort by score descending, then by fastest time
     scores.sort(key=lambda x: (-x[1], x[2]))
-    return scores[:10]  # only keep top 10
+    return scores[:10]
 
-# Format seconds into MM:SS display
 def format_time(seconds):
     minutes = int(seconds // 60)
     seconds = int(seconds % 60)
     return f"{minutes:02}:{seconds:02}"
 
+def reset_today_scores_if_new_day(today_file):
+    """Clear today's scores if the date has changed."""
+    base_path = os.path.dirname(today_file)
+    last_reset_path = os.path.join(base_path, "last_reset.txt")
+
+    # Central Time offset
+    central_offset = timedelta(hours=-5)
+    now_cst = datetime.now(timezone(central_offset))
+    today_date = now_cst.strftime("%Y-%m-%d")
+
+    # Read last reset date
+    last_date = None
+    if os.path.exists(last_reset_path):
+        with open(last_reset_path, "r") as f:
+            last_date = f.read().strip()
+
+    # If new day clear today file and update reset file
+    if last_date != today_date:
+        open(today_file, "w").close()  # clear file
+        with open(last_reset_path, "w") as f:
+            f.write(today_date)
+
 def show_high_scores(screen):
-    """Show today's and all-time high scores with retro background and layout."""
     running = True
     clock = pygame.time.Clock()
 
-    # Set up fonts
     title_font = load_custom_font(70)
     header_font = load_custom_font(40)
-    text_font = load_custom_font(32)
+    text_font = load_custom_font(48)
 
-    # Paths for score files
     base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     today_file = os.path.join(base_path, "today_scores.txt")
     all_time_file = os.path.join(base_path, "records_alltime.txt")
+
+    # Reset today's scores if the date has changed
+    reset_today_scores_if_new_day(today_file)
 
     # Load both files (today + all-time)
     today_scores = load_scores(today_file)
     all_time_scores = load_scores(all_time_file)
 
+    rank_colors = [(0, 255, 255), (255, 105, 180), (255, 255, 0), (255, 120, 60)]
+
     while running:
-        # Draw retro background grid
         draw_retro_background(screen)
 
-        # Main title
         title_text = title_font.render("HIGH SCORES", True, YELLOW)
         screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 60))
 
-        # Section headers
-        today_title = header_font.render("TODAY'S HIGH SCORES", True, WHITE)
-        alltime_title = header_font.render("ALL-TIME HIGH SCORES", True, WHITE)
-
+        today_title = header_font.render("TODAY'S HIGH SCORES", True, YELLOW)
+        alltime_title = header_font.render("ALL-TIME HIGH SCORES", True, YELLOW)
         screen.blit(today_title, (SCREEN_WIDTH // 4 - today_title.get_width() // 2, 150))
         screen.blit(alltime_title, (3 * SCREEN_WIDTH // 4 - alltime_title.get_width() // 2, 150))
 
-        # Set list spacing
         y_start = 220
         spacing = 38
 
-        # Loop through both lists and draw side-by-side
-        for i in range(10):
-            # LEFT SIDE (today's top scores)
-            if i < len(today_scores):
-                initials, score, time_val = today_scores[i]
-                entry = f"{i+1}. {initials:<3}  {score:<5}  {format_time(time_val)}"
-                text = text_font.render(entry, True, WHITE)
-                screen.blit(text, (SCREEN_WIDTH // 4 - 150, y_start + i * spacing))
-            else:
-                empty_text = text_font.render(f"{i+1}. ---   ----   --:--", True, (150, 150, 150))
-                screen.blit(empty_text, (SCREEN_WIDTH // 4 - 150, y_start + i * spacing))
+        # Column widths
+        rank_w = text_font.size("10")[0]
+        init_w = text_font.size("WWW")[0]
+        score_w = text_font.size("999999")[0]
+        time_w = text_font.size("00:00")[0]
+        col_gap = 24
 
-            # RIGHT SIDE (all-time top scores)
-            if i < len(all_time_scores):
-                initials, score, time_val = all_time_scores[i]
-                entry = f"{i+1}. {initials:<3}  {score:<5}  {format_time(time_val)}"
-                text = text_font.render(entry, True, WHITE)
-                screen.blit(text, (3 * SCREEN_WIDTH // 4 - 150, y_start + i * spacing))
-            else:
-                empty_text = text_font.render(f"{i+1}. ---   ----   --:--", True, (150, 150, 150))
-                screen.blit(empty_text, (3 * SCREEN_WIDTH // 4 - 150, y_start + i * spacing))
+        def draw_table(x_base, scores):
+            for i in range(10):
+                color = rank_colors[i % len(rank_colors)]
+                y = y_start + i * spacing
 
-        # Footer for exiting the screen
-        footer_text = text_font.render("Press ESC to return", True, ORANGE)
-        screen.blit(footer_text, (SCREEN_WIDTH // 2 - footer_text.get_width() // 2, SCREEN_HEIGHT - 80))
+                if i < len(scores):
+                    initials, score, t = scores[i]
+                    surf = text_font.render(f"{i + 1}", True, color)
+                    screen.blit(surf, (x_base, y))
+                    surf = text_font.render(initials, True, color)
+                    screen.blit(surf, (x_base + rank_w + col_gap, y))
+                    surf = text_font.render(str(score), True, color)
+                    screen.blit(surf, (x_base + rank_w + col_gap + init_w + col_gap +
+                                       (score_w - surf.get_width()), y))
+                    t_str = format_time(t)
+                    surf = text_font.render(t_str, True, color)
+                    screen.blit(surf, (x_base + rank_w + col_gap + init_w + col_gap +
+                                       score_w + col_gap + (time_w - surf.get_width()), y))
+                else:
+                    empty_color = (150, 150, 150)
+                    screen.blit(text_font.render(f"{i + 1}", True, empty_color), (x_base, y))
+                    screen.blit(text_font.render("---", True, empty_color), (x_base + rank_w + col_gap, y))
+                    screen.blit(text_font.render("----", True, empty_color),
+                                (x_base + rank_w + col_gap + init_w + col_gap +
+                                 score_w - text_font.size("----")[0], y))
+                    screen.blit(text_font.render("--:--", True, empty_color),
+                                (x_base + rank_w + col_gap + init_w + col_gap +
+                                 score_w + col_gap + time_w - text_font.size("--:--")[0], y))
 
-        # Handle ESC key or quit
+        # Left and right table anchors
+        left_x = SCREEN_WIDTH // 4 - (rank_w + col_gap + init_w + col_gap + score_w + col_gap + time_w) // 2
+        right_x = 3 * SCREEN_WIDTH // 4 - (rank_w + col_gap + init_w + col_gap + score_w + col_gap + time_w) // 2
+
+        draw_table(left_x, today_scores)
+        draw_table(right_x, all_time_scores)
+
+        footer_text = text_font.render("PRESS ESC TO RETURN", True, (220, 20, 60))
+        screen.blit(footer_text, (SCREEN_WIDTH // 2 - footer_text.get_width() // 2, SCREEN_HEIGHT - 175))
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()

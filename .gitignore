@@ -7,3 +7,4 @@ FETCH_HEAD
 records.txt
 records_alltime.txt
 today_scores.txt
+last_reset.txt

@@ -6,6 +6,7 @@ from objects.block import Block
 from objects.scoreboard import ScoreBoard
 from scenes.win_lose import end_screen
 from objects.timer import Timer  # Added import for new timer feature
+from scenes.pause_overlay import pause_overlay
 
 # Paddle constants
 BAR_WIDTH = 200
@@ -128,11 +129,14 @@ def main_controller(screen, debug_mode=False):
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                # Timer now starts when space is pressed for first ball launch
-                if event.key is pygame.K_SPACE and ball_velocity.y == 0:
+                # Launch ball on first space press
+                if event.key == pygame.K_SPACE and ball_velocity.y == 0:
                     ball_velocity.x = get_x_velocity(bar, ball, ball_max_velocity_x, bar_width)
                     ball_velocity.y = -5
-                    timer.resume()  # starts or resumes the timer
+                    timer.resume()
+                # Request pause
+                if event.key == pygame.K_ESCAPE:
+                    pause_requested = True
 
         # Key presses handling
         keys = pygame.key.get_pressed()
@@ -229,6 +233,15 @@ def main_controller(screen, debug_mode=False):
         if debug_mode == "countdown" and timer.get_time() <= 0:
             scoreboard.lives = 0
             running = False
+
+        # Pause handling
+        if 'pause_requested' in locals() and pause_requested:
+            snapshot = screen.copy()
+            choice = pause_overlay(snapshot)
+            if choice == "menu":
+                return False
+            pygame.event.clear()
+            pause_requested = False
 
         # Update the display
         pygame.display.flip()

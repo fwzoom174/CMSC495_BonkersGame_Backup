@@ -3,7 +3,7 @@ import pygame
 import common
 
 from common import RED, WHITE, GREEN, BLUE, SCREEN_WIDTH, SCREEN_HEIGHT
-from scenes import breakout, how_to, highscores  # added highscores import for menu option
+from scenes import breakout, how_to, highscores
 
 
 def main_menu():
@@ -14,12 +14,12 @@ def main_menu():
     font = pygame.font.Font(None, 74)
     small_font = pygame.font.Font(None, 50)
 
-    # Added new "High Scores" button under How to Play
+    # Main menu text
     title = font.render("Breakout Game", True, WHITE)
     play_button = small_font.render("Play", True, BLUE)
     quit_button = small_font.render("Quit", True, RED)
     how_button = small_font.render("How to Play", True, GREEN)
-    high_button = small_font.render("High Scores", True, (255, 215, 0))  # gold color
+    high_button = small_font.render("High Scores", True, (255, 215, 0))
 
     play_rect = play_button.get_rect(center=(SCREEN_WIDTH // 2, 320))
     how_rect = how_button.get_rect(center=(SCREEN_WIDTH // 2, 400))
@@ -32,7 +32,7 @@ def main_menu():
         common.draw_gradient_background(screen, (20, 20, 60), (0, 0, 0))
         screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 150))
 
-        # Draw menu buttons (added high scores button in the middle)
+        # Draw menu buttons
         for button, rect in [
             (play_button, play_rect),
             (how_button, how_rect),
@@ -41,9 +41,9 @@ def main_menu():
         ]:
             screen.blit(button, rect)
 
-        # Detect mouse hover over buttons
+        # Mouse hover check
         mouse_pos = pygame.mouse.get_pos()
-        for rect in [play_rect, how_rect, quit_rect]:
+        for rect in [play_rect, how_rect, high_rect, quit_rect]:
             if rect.collidepoint(mouse_pos):
                 pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
                 break
@@ -61,7 +61,7 @@ def main_menu():
                 elif how_rect.collidepoint(event.pos):
                     how_to.show_instructions(screen)
                 elif high_rect.collidepoint(event.pos):
-                    highscores.show_high_scores(screen)  # new function call
+                    highscores.show_high_scores(screen)
                 elif quit_rect.collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()

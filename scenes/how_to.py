@@ -1,11 +1,14 @@
 import sys
 import pygame
 import common
+import os
 
 def show_instructions(screen):
     """Simple instruction screen"""
-    font = pygame.font.Font(None, 48)
-    small_font = pygame.font.Font(None, 36)
+    font_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'font', 'Pixeboy.ttf')
+    font = pygame.font.Font(font_path, 64)
+    small_font = pygame.font.Font(font_path, 40)
+
     screen_width = screen.get_width()
 
     # Display the list of controls and instructions
@@ -14,7 +17,7 @@ def show_instructions(screen):
         "Use the arrow keys or A/D to move the paddle.",
         "Bounce the ball to break all the blocks.",
         "You have 3 lives. The game ends when they run out.",
-        "Press ESC to go back to the menu."
+        "Press ESC to pause the game.",
     ]
 
     waiting = True

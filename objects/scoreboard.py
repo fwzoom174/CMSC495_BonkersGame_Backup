@@ -1,6 +1,4 @@
-# scoreboard.py
 # Early draft of the scoreboard system
-# Handles player score, lives, and high score tracking
 
 import pygame
 import os
@@ -9,7 +7,6 @@ from common import SCREEN_WIDTH, SCREEN_HEIGHT
 # Constants for block spacing (used for visual alignment)
 BLOCK_WIDTH = 60
 BLOCK_SPACE = 10
-
 
 class ScoreBoard:
     """Displays and manages the score, lives, and high score."""
@@ -20,7 +17,7 @@ class ScoreBoard:
         self.font = pygame.font.Font(font_path, 50)  # Pixel font
         self.score = 0
         self.high_score = 0
-        self.best_time = 0.0  # added best time tracking for fastest completion
+        self.best_time = 0.0
         self.lives = 3
         self.load_high_score()
 
@@ -152,8 +149,8 @@ class ScoreBoard:
 
         # Added positioning to place best time next to high score
         if self._best_time_surface:
-            best_x = high_x + self._high_surface.get_width() + 30  # spacing between text
-            best_y = high_y + 2  # slight alignment adjustment
+            best_x = high_x + self._high_surface.get_width() + 30
+            best_y = high_y + 2
             self.screen.blit(self._best_time_surface, (best_x, best_y))
 
         # Score shown bottom-left
