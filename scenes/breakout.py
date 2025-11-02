@@ -64,7 +64,7 @@ def main_controller(screen, debug_mode=False):
         timer = Timer(screen, mode="countdown", countdown_time=10)
 
     font = pygame.font.Font(None, 36)
-    
+
 
     # Load pixel font for messages
     import os
@@ -102,7 +102,7 @@ def main_controller(screen, debug_mode=False):
         else:
             screen.fill(BLACK)
 
-# Draw the paddle
+        # Draw the paddle
         bar_rect = pygame.Rect(bar_x, bar_y, bar_width, bar_height)
         if paddle_image:
             screen.blit(paddle_image, (bar_x, bar_y))
@@ -166,7 +166,7 @@ def main_controller(screen, debug_mode=False):
                 if paddle_sound:
                     paddle_sound.play()
 
-# Draw the blocks and check for collisions
+        # Draw the blocks and check for collisions
         for block in blocks:
             # Try to draw brick image, fallback to rectangle
             if block.color in brick_images and brick_images[block.color]:
@@ -188,7 +188,12 @@ def main_controller(screen, debug_mode=False):
                         ball_position.x = block.rect.left - ball_radius - 1
                     else:
                         ball_position.x = block.rect.right + ball_radius + 1
+
+                # Remove the block from the list of blocks
                 blocks.remove(block)
+                # Remove any remaining references to the hit block to make sure Python's garbage collection deletes it
+                del block
+
                 # Add points when a block is destroyed
                 scoreboard.add_points(50)
                 # PLAY BRICK SOUND
