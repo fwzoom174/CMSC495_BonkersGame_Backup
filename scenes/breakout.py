@@ -162,7 +162,7 @@ def game_loop(screen, scoreboard, timer, blocks, debug_mode=False):
         return False
 
     # Move the ball - False when the ball hits the bottom of the screen
-    if not move_ball(screen, walls, bar, ball, scoreboard, timer):
+    if not move_ball(screen, walls, bar, ball):
         # Pause game, update lives, returns False when out of lives
         if not update_scoreboard(screen, scoreboard, timer):
             return False
@@ -272,10 +272,7 @@ def detect_collision(ball, blocks):
 
     return score
 
-def move_ball(screen, wall_rect, bar, ball, scoreboard, timer):
-    # Constrain the ball to the screen bounds
-    wall_check()
-
+def move_ball(screen, walls, bar, ball):
     if ball_velocity.y == 0:
         msg = font.render("PRESS [SPACE] TO BEGIN", True, (255, 255, 0))
         screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, SCREEN_HEIGHT // 2))
@@ -283,59 +280,52 @@ def move_ball(screen, wall_rect, bar, ball, scoreboard, timer):
     else:
         # Move the ball
         ball_position.move_towards_ip(ball_position + ball_velocity, 10)
+
         # Wall collision detection (inner wall - left, right, top)
-        # Left wall
-        if ball_position.x - ball_radius <= wall_rect.left:
-            ball_velocity.x *= -1
-            ball_position.x = wall_rect.left + ball_radius
-            if wall_sound:
-                wall_sound.play()
-
-        # Right wall
-        if ball_position.x + ball_radius >= wall_rect.right:
-            ball_velocity.x *= -1
-            ball_position.x = wall_rect.right - ball_radius
-            if wall_sound:
-                wall_sound.play()
-
-        # Top wall
-        if ball_position.y - ball_radius <= wall_rect.top:
-            ball_velocity.y *= -1
-            ball_position.y = wall_rect.top + ball_radius
-            if wall_sound:
-                wall_sound.play()
+        wall_check(walls)
 
         # Is the ball touching the paddle
-        if bar.colliderect(ball):
-            ball_velocity.x = get_x_angle(bar, ball)
-            # Send the ball back up
-            ball_velocity.y *= -1
-            # Nudge the ball above the paddle to avoid sticking
-            ball_position.y = bar.top - ball_radius - 1
-            # PLAY PADDLE SOUND
-            if paddle_sound:
-                paddle_sound.play()
+        paddle_check(bar, ball)
 
         if ball_position.y - ball_radius > SCREEN_HEIGHT:
             return False
         return True
 
 
-def wall_check():
+def wall_check(walls):
     global ball_velocity
 
-    # Constrain the ball to the screen bounds
-    if ball_position.x + ball_radius >= SCREEN_WIDTH or ball_position.x - ball_radius <= 0:
+    # Left wall
+    if ball_position.x - ball_radius <= walls.left:
         ball_velocity.x *= -1
-        # PLAY WALL SOUND
+        ball_position.x = walls.left + ball_radius
         if wall_sound:
             wall_sound.play()
 
-    if ball_position.y - ball_radius <= 0:
-        ball_velocity.y *= -1
-        # PLAY WALL SOUND
+    # Right wall
+    if ball_position.x + ball_radius >= walls.right:
+        ball_velocity.x *= -1
+        ball_position.x = walls.right - ball_radius
         if wall_sound:
             wall_sound.play()
+
+    # Top wall
+    if ball_position.y - ball_radius <= walls.top:
+        ball_velocity.y *= -1
+        ball_position.y = walls.top + ball_radius
+        if wall_sound:
+            wall_sound.play()
+
+def paddle_check(bar, ball):
+    if bar.colliderect(ball):
+        ball_velocity.x = get_x_angle(bar, ball)
+        # Send the ball back up
+        ball_velocity.y *= -1
+        # Nudge the ball above the paddle to avoid sticking
+        ball_position.y = bar.top - ball_radius - 1
+        # PLAY PADDLE SOUND
+        if paddle_sound:
+            paddle_sound.play()
 
 def get_x_angle(bar, ball):
     # Calculate where on the paddle the ball collided. Invert it so positive offset is right and negative is left
