@@ -1,4 +1,5 @@
 import pygame
+import os
 
 SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 900
 
@@ -12,6 +13,9 @@ YELLOW = (255, 255, 0)
 PURPLE = (180, 0, 255)
 CYAN = (0, 255, 255)
 WHITE = (255, 255, 255)
+
+COLORS = [RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, CYAN]
+ROOT_PATH = os.path.dirname(__file__)
 
 def draw_gradient_background(screen, top_color, bottom_color):
     """Draw a simple vertical gradient for the menu background"""
