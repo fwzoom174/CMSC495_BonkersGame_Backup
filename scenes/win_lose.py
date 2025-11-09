@@ -10,9 +10,9 @@ pygame.mixer.init()
 
 # Load game over sound
 try:
-    game_over_sound = pygame.mixer.Sound("media/audio/media_audio_game_over.wav")
-    win_sound = pygame.mixer.Sound("media/audio/media_audio_win.wav")
-    menu_click_sound = pygame.mixer.Sound("media/audio/media_audio_selection_click.wav")
+    game_over_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_game_over.wav"))
+    win_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_win.wav"))
+    menu_click_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_selection_click.wav"))
 
 except:
     print("Warning: Could not load game over sound.")
@@ -125,6 +125,38 @@ def draw_animated_text(screen, full_text, letter_states, font, color, center_pos
         char_width = font.render(char, True, color).get_width()
         x_offset += char_width
 
+def get_player_initials(screen, score):
+    initials = ""
+    max_letters = 3
+    entering_name = True
+
+    while entering_name:
+        draw_retro_background(screen)
+        score_text = load_custom_font(40).render(f"SCORE: {score}", True, BLUE)
+        screen.blit(score_text, score_text.get_rect(centerx=SCREEN_WIDTH // 2, top=100))
+        title = load_custom_font(90).render("ENTER INITIALS", True, YELLOW)
+        screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 120)))
+        initials_display = load_custom_font(100).render(initials or "_", True, WHITE)
+        screen.blit(initials_display, initials_display.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)))
+        hint = load_custom_font(40).render("Press ENTER when done", True, ORANGE)
+        screen.blit(hint, hint.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 120)))
+
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_RETURN and initials:
+                    entering_name = False
+                elif ev.key == pygame.K_BACKSPACE:
+                    initials = initials[:-1]
+                elif pygame.K_a <= ev.key <= pygame.K_z and len(initials) < max_letters:
+                    initials += chr(ev.key).upper()
+
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)
+
+    return initials
 
 def end_screen(screen, win=True, score=500):
     pygame.display.set_caption("Congratulations!" if win else "Game Over")
@@ -190,38 +222,8 @@ def end_screen(screen, win=True, score=500):
         draw_animated_text(screen, full_text, letter_states, game_font, text_color,
                           (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
 
-        # --- Once animation done, ask for initials (new section I added) ---
         if typewriter_done and not initials:
-            initials = ""
-            max_letters = 3
-            entering_name = True
-
-            # This section lets the player input up to 3 initials after finishing
-            while entering_name:
-                draw_retro_background(screen)
-                score_text = load_custom_font(40).render(f"SCORE: {score}", True, BLUE)
-                screen.blit(score_text, score_text.get_rect(centerx=SCREEN_WIDTH // 2, top=100))
-                title = load_custom_font(90).render("ENTER INITIALS", True, YELLOW)
-                screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 120)))
-                initials_display = load_custom_font(100).render(initials or "_", True, WHITE)
-                screen.blit(initials_display, initials_display.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)))
-                hint = load_custom_font(40).render("Press ENTER when done", True, ORANGE)
-                screen.blit(hint, hint.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 120)))
-
-                for ev in pygame.event.get():
-                    if ev.type == pygame.QUIT:
-                        pygame.quit()
-                        sys.exit()
-                    elif ev.type == pygame.KEYDOWN:
-                        if ev.key == pygame.K_RETURN and initials:
-                            entering_name = False  # finish entering name
-                        elif ev.key == pygame.K_BACKSPACE:
-                            initials = initials[:-1]
-                        elif pygame.K_a <= ev.key <= pygame.K_z and len(initials) < max_letters:
-                            initials += chr(ev.key).upper()
-
-                pygame.display.flip()
-                pygame.time.Clock().tick(60)
+            initials = get_player_initials(screen, score)    
 
         # --- Now show Play Again? buttons (normal replay section) ---
         if typewriter_done and initials:
@@ -255,39 +257,6 @@ def end_screen(screen, win=True, score=500):
                     selected = "NO"
                     if menu_click_sound:
                         menu_click_sound.play()
-                elif event.key in (pygame.K_SPACE, pygame.K_RETURN):
-                    if event.type == pygame.KEYDOWN:
-                     if not typewriter_done or buttons_alpha < 255:
-                        letter_states = [1.0] * len(full_text)
-                    typewriter_done = True
-                    buttons_alpha = 255
-                elif event.key in [pygame.K_LEFT, pygame.K_a]:
-                    selected = "YES"
-                    if menu_click_sound:
-                        menu_click_sound.play()
-                elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                    selected = "NO"
-                    if menu_click_sound:
-                        menu_click_sound.play()
-                elif event.key in (pygame.K_SPACE, pygame.K_RETURN):
-                    if selected == "YES":
-                        return True, initials  # returns initials to breakout
-                    else:
-                        return False, initials
-
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if yes_button and yes_button.collidepoint(event.pos):
-                    if menu_click_sound:
-                        menu_click_sound.play()                   
-                    return True, initials  # mouse click confirm
-                elif no_button and no_button.collidepoint(event.pos):
-                    if menu_click_sound:
-                        menu_click_sound.play()
-                    return False, initials
-                    if selected == "YES":
-                        return True, initials  # returns initials to breakout
-                    else:
-                        return False, initials
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if yes_button and yes_button.collidepoint(event.pos):
