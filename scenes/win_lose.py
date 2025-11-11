@@ -24,6 +24,7 @@ except:
 BLUE = (18, 89, 202)
 YELLOW = (254, 175, 54)
 
+# ---------- FONT & GRAPHICS UTILITIES ----------
 def load_custom_font(size, bold=False):
     font_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'font', 'Pixeboy.ttf')
     return pygame.font.Font(font_path, size)
@@ -33,6 +34,7 @@ def draw_retro_background(screen):
     background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
     screen.blit(background, (0, 0))
 
+# ---------- DRAWING FUNCTIONS ----------
 def draw_button(screen, text, font, center_pos, selected=False):
     text_surface = font.render(text, True, WHITE)
     text_rect = text_surface.get_rect(center=center_pos)
@@ -125,6 +127,7 @@ def draw_animated_text(screen, full_text, letter_states, font, color, center_pos
         char_width = font.render(char, True, color).get_width()
         x_offset += char_width
 
+# ---------- HELPER FUNCTIONS ----------
 def get_player_initials(screen, score):
     initials = ""
     max_letters = 3
@@ -158,6 +161,7 @@ def get_player_initials(screen, score):
 
     return initials
 
+# ---------- MAIN END SCREEN FUNCTION ----------
 def end_screen(screen, win=True, score=500):
     pygame.display.set_caption("Congratulations!" if win else "Game Over")
     # Play game over sound if player lost

@@ -1,6 +1,7 @@
 import pygame
 import os
 import time
+import scenes.breakout as breakout
 
 # Timer class for both stopwatch and countdown modes
 class Timer:
@@ -68,8 +69,6 @@ class Timer:
             remaining = self.get_time()
             if remaining <= 0:
                 self.pause()
-                # Added this part so the countdown can end the game when time runs out
-                import scenes.breakout as breakout
                 breakout.running = False  # game stops when timer hits zero
 
     # ---------- Draw ----------

@@ -5,6 +5,7 @@ import common
 from common import RED, WHITE, GREEN, BLUE, SCREEN_WIDTH, SCREEN_HEIGHT
 from scenes import breakout, how_to, highscores
 
+# ---------- SOUND & GRAPHICS LOADING ----------
 # Initialize the mixer for sound
 pygame.mixer.init()
 
@@ -23,6 +24,7 @@ except:
     print("Warning: Could not load background image.")
     menu_background = None
 
+# ---------- MAIN MENU ----------
 def main_menu():
     # Set up the screen
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -112,7 +114,7 @@ def main_menu():
         pygame.display.flip()
         pygame.time.Clock().tick(60)
 
-
+# ---------- TEST/DEBUG MENU ----------
 def open_test_menu(screen):
     """Simple text-based menu for choosing which test to run."""
     font = pygame.font.Font(None, 60)
@@ -150,61 +152,15 @@ def open_test_menu(screen):
         pygame.display.flip()
         pygame.time.Clock().tick(60)
 
-
-def show_high_scores(screen):
-    """Display the saved high score and best time (simple single-screen view)."""
-    import os
-
-    font = pygame.font.Font(None, 60)
-    small_font = pygame.font.Font(None, 36)
-    running = True
-
-    # Loads score and time saved from last session
-    records_path = os.path.join(os.path.dirname(__file__), "records.txt")
-    high_score, best_time = 0, 0.0
-    if os.path.exists(records_path):
-        with open(records_path, "r") as f:
-            lines = f.readlines()
-            if len(lines) >= 1:
-                high_score = int(lines[0].strip() or 0)
-            if len(lines) >= 2:
-                best_time = float(lines[1].strip() or 0.0)
-
-    # Format time for cleaner display
-    best_time_display = f"{int(best_time // 60):02}:{int(best_time % 60):02}"
-
-    while running:
-        screen.fill((0, 0, 0))
-        title = font.render("HIGH SCORES", True, (255, 255, 255))
-        score_text = small_font.render(f"High Score: {high_score}", True, (255, 215, 0))
-        time_text = small_font.render(f"Best Time: {best_time_display}", True, (200, 200, 200))
-        exit_text = small_font.render("Press ESC to return", True, (255, 100, 100))
-
-        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 200))
-        screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 300))
-        screen.blit(time_text, (SCREEN_WIDTH // 2 - time_text.get_width() // 2, 350))
-        screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, 480))
-
-        # ESC key closes the high score screen
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
-
-        pygame.display.flip()
-        pygame.time.Clock().tick(60)
-
-
-def play_breakout(screen, debug_mode=""):
+# ---------- GAME LAUNCHER ----------
+def play_breakout(screen, debug_mode=False):
     # Starts the breakout gameplay (normal, debug, or countdown)
     replay = True
     while replay:
         replay = breakout.play(screen, debug_mode)
     main_menu()
 
-
+# ---------- MAIN ENTRY POINT ----------
 if __name__ == '__main__':
     # Initialize Pygame
     pygame.init()

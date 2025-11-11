@@ -5,23 +5,28 @@ from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW
 from scenes.win_lose import draw_retro_background
 from datetime import datetime, timezone, timedelta
 
+# ---------- INITIALIZATION ----------
 pygame.font.init()
 
 # Initialize the mixer for sound
 pygame.mixer.init()
 
+# ---------- SOUND LOADING ----------
 # Load sound effects
 
 try:
-    menu_click_sound = pygame.mixer.Sound("media/audio/media_audio_selection_click.wav")
+    menu_click_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_selection_click.wav"))
 except:
     print("Warning: Could not load menu click sound.")
     menu_click_sound = None
 
+# ---------- FONT UTILITIES ----------
 def load_custom_font(size):
     font_path = os.path.join(os.path.dirname(__file__), "..", "media", "graphics", "font", "Pixeboy.ttf")
     return pygame.font.Font(font_path, size)
 
+
+# ---------- SCORE MANAGEMENT ----------
 def load_scores(file_path):
     scores = []
     if not os.path.exists(file_path):
@@ -61,7 +66,8 @@ def reset_today_scores_if_new_day(today_file):
         open(today_file, "w").close()  # clear file
         with open(last_reset_path, "w") as f:
             f.write(today_date)
-
+            
+# ---------- HIGH SCORES DISPLAY ----------
 def show_high_scores(screen):
     running = True
     clock = pygame.time.Clock()
