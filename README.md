@@ -1,3 +1,31 @@
+***Constantly evolving and in progress throughout project assignment submissions***
+***Formatting & content in progress***
+
+BREAKOUT BONKERS
+
+A simple Python Breakout game optimized for short, offline play during a 10 to 15-minute commute for that quick “pick-me-up” session from start to end. It is geared towards the casual gamer with short durations of play and emphasis on simple gameplay, immediate startup and shutdown, reliability (no crashes or restarts), and responsive input/feedback throughout the play session.
+
+## Website & Code Reference
+***IN PROGRESS***
+
+## HOW TO RUN APPLICATION
+(Standalone executable: ***IN PROGRESS***)
+1. Download Release Zip File labeled, "CMSC495_BonkersGame-0.1.0-week4"
+2. Extract Contents
+3. (Using PyCharm) Open source code folder
+4. Open a .py file (such as main.py)
+5. Select RUN
+
+## Current Requirements to Run Game Application
+Python 3.11+
+PyCharm 3.13+ (IDE)
+
+## Performance & Optimizations
+***IN PROGRESS****
+
+## Additional Information & Progress Statistics of Game Application
+***IN PROGRESS***
+
 ## Assets
 
 Audio from [Rubberduck](https://opengameart.org/users/rubberduck) and [LeohPaz](https://opengameart.org/users/leohpaz) on [OpenGameArt](https://opengameart.org)
@@ -5,3 +33,6 @@ Audio from [Rubberduck](https://opengameart.org/users/rubberduck) and [LeohPaz](
 Coin Particle from [Truezipp](https://opengameart.org/users/truezipp) on [OpenGameArt](https://opengameart.org)
 
 Assets under license [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+
+## Additional Resources, Images, and References
+***IN PROGRESS***
