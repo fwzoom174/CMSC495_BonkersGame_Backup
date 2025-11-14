@@ -17,7 +17,7 @@ class Timer:
         self.start_time = None
         self.elapsed_time = 0
         self.paused = True
-        self.font = self.load_custom_font(28)
+        self.font = self.load_custom_font(54)
         self.text_color = (255, 255, 255)
 
     # ---------- Font ----------
@@ -81,6 +81,6 @@ class Timer:
         time_text = f"{minutes:02}:{seconds:02}"
         text_surface = self.font.render(time_text, True, self.text_color)
 
-        # Changed position to top-right corner (keeps it clear of scoreboard)
-        text_rect = text_surface.get_rect(topright=(1180,65))
+        # Adjusted position slightly inward to align visually with HUD
+        text_rect = text_surface.get_rect(topright=(1165, 60))
         self.screen.blit(text_surface, text_rect)

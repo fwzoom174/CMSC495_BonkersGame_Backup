@@ -10,7 +10,6 @@ from scenes import breakout, how_to, highscores
 pygame.mixer.init()
 
 # Load sound effects
-
 try:
     menu_click_sound = pygame.mixer.Sound("media/audio/media_audio_selection_click.wav")
 except:
@@ -116,35 +115,59 @@ def main_menu():
 
 # ---------- TEST/DEBUG MENU ----------
 def open_test_menu(screen):
-    """Simple text-based menu for choosing which test to run."""
+    """Simple text-based menu for choosing which test/debug to run."""
     font = pygame.font.Font(None, 60)
     small_font = pygame.font.Font(None, 36)
     running = True
-    selection = None
 
     while running:
         screen.fill((0, 0, 0))
+
         title = font.render("TEST MODE", True, (255, 255, 255))
         option1 = small_font.render("1 - Regular Debug (1 Block)", True, (0, 200, 0))
         option2 = small_font.render("2 - Countdown Timer Test", True, (0, 200, 0))
+        option3 = small_font.render("3 - Start at Level 1", True, (200, 200, 0))
+        option4 = small_font.render("4 - Start at Level 2", True, (200, 200, 0))
+        option5 = small_font.render("5 - Start at Level 3", True, (200, 200, 0))
+        option6 = small_font.render("6 - Start at Level 4", True, (200, 200, 0))
+        option7 = small_font.render("7 - Start at Level 5", True, (200, 200, 0))
         exit_text = small_font.render("ESC - Return to Menu", True, (200, 0, 0))
 
-        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 180))
-        screen.blit(option1, (SCREEN_WIDTH // 2 - option1.get_width() // 2, 300))
-        screen.blit(option2, (SCREEN_WIDTH // 2 - option2.get_width() // 2, 360))
-        screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, 450))
+        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 150))
+        screen.blit(option1, (SCREEN_WIDTH // 2 - option1.get_width() // 2, 260))
+        screen.blit(option2, (SCREEN_WIDTH // 2 - option2.get_width() // 2, 310))
+        screen.blit(option3, (SCREEN_WIDTH // 2 - option3.get_width() // 2, 360))
+        screen.blit(option4, (SCREEN_WIDTH // 2 - option4.get_width() // 2, 410))
+        screen.blit(option5, (SCREEN_WIDTH // 2 - option5.get_width() // 2, 460))
+        screen.blit(option6, (SCREEN_WIDTH // 2 - option6.get_width() // 2, 510))
+        screen.blit(option7, (SCREEN_WIDTH // 2 - option7.get_width() // 2, 560))
+        screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, 620))
 
-        # Added countdown timer test (debug option 2)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    play_breakout(screen, "one_block")  # Regular debug mode
+                    play_breakout(screen, "one_block")
                     return
                 elif event.key == pygame.K_2:
-                    play_breakout(screen, "countdown")  # Countdown test mode
+                    play_breakout(screen, "countdown")
+                    return
+                elif event.key == pygame.K_3:
+                    play_breakout(screen, "level_1")
+                    return
+                elif event.key == pygame.K_4:
+                    play_breakout(screen, "level_2")
+                    return
+                elif event.key == pygame.K_5:
+                    play_breakout(screen, "level_3")
+                    return
+                elif event.key == pygame.K_6:
+                    play_breakout(screen, "level_4")
+                    return
+                elif event.key == pygame.K_7:
+                    play_breakout(screen, "level_5")
                     return
                 elif event.key == pygame.K_ESCAPE:
                     running = False

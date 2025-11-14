@@ -161,30 +161,27 @@ def get_player_initials(screen, score):
 
     return initials
 
-# ---------- MAIN END SCREEN FUNCTION ----------
 def end_screen(screen, win=True, score=500):
     pygame.display.set_caption("Congratulations!" if win else "Game Over")
-    # Play game over sound if player lost
+
     if win and win_sound:
         win_sound.play()
     elif not win and game_over_sound:
         game_over_sound.play()
+
     full_text = "YOU WIN!" if win else "GAME OVER"
     text_color = YELLOW if win else RED
 
     selected = "YES"
     yes_button, no_button = None, None
-
     game_font = load_custom_font(150)
 
-    # Smooth animation variables
     letter_states = []
     letter_delay = 40
     animation_speed = 0.15
     last_letter_time = pygame.time.get_ticks()
     typewriter_done = False
 
-    # Fade-in variables for buttons and instruction
     buttons_alpha = 0
     buttons_fade_speed = 40
 
@@ -198,38 +195,30 @@ def end_screen(screen, win=True, score=500):
         score_rect = score_text.get_rect(centerx=SCREEN_WIDTH // 2, top=100)
         screen.blit(score_text, score_rect)
 
-        # Current animation time
         current_time = pygame.time.get_ticks()
 
-        # Add new letters to animate
         if len(letter_states) < len(full_text) and current_time - last_letter_time > letter_delay:
             letter_states.append(0.0)
             last_letter_time = current_time
 
-        # Progress of all letters
         for i in range(len(letter_states)):
             if letter_states[i] < 1.0:
                 letter_states[i] += animation_speed
                 if letter_states[i] > 1.0:
                     letter_states[i] = 1.0
 
-        # Animation Done
         if len(letter_states) == len(full_text) and all(s >= 1.0 for s in letter_states):
             typewriter_done = True
-            # Fade in buttons and instruction
             if buttons_alpha < 255:
                 buttons_alpha += buttons_fade_speed
                 if buttons_alpha > 255:
                     buttons_alpha = 255
 
-        # Draw the animated text
-        draw_animated_text(screen, full_text, letter_states, game_font, text_color,
-                          (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
+        draw_animated_text(screen, full_text, letter_states, game_font, text_color, (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
 
         if typewriter_done and not initials:
-            initials = get_player_initials(screen, score)    
+            initials = get_player_initials(screen, score)
 
-        # --- Now show Play Again? buttons (normal replay section) ---
         if typewriter_done and initials:
             instruction_text = load_custom_font(48).render("Play Again?", True, WHITE)
             instruction_text.set_alpha(buttons_alpha)
@@ -243,7 +232,13 @@ def end_screen(screen, win=True, score=500):
             temp_surface.set_alpha(buttons_alpha)
             screen.blit(temp_surface, (0, 0))
 
-        # --- Input handling for Play Again (also returns initials to save) ---
+        # --- Cursor control (changes only over buttons) ---
+        mouse_pos = pygame.mouse.get_pos()
+        if (yes_button and yes_button.collidepoint(mouse_pos)) or (no_button and no_button.collidepoint(mouse_pos)):
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -265,18 +260,21 @@ def end_screen(screen, win=True, score=500):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if yes_button and yes_button.collidepoint(event.pos):
                     if menu_click_sound:
-                        menu_click_sound.play()                   
-                    return True, initials  # mouse click confirm
+                        menu_click_sound.play()
+                    pygame.display.flip()
+                    pygame.time.wait(1000)
+                    return True, initials
                 elif no_button and no_button.collidepoint(event.pos):
                     if menu_click_sound:
                         menu_click_sound.play()
+                    pygame.display.flip()
+                    pygame.time.wait(1000)
                     return False, initials
 
         pygame.display.flip()
         pygame.time.Clock().tick(60)
 
     return False, initials
-
 
 def main():
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))

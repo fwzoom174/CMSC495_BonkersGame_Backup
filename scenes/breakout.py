@@ -1,34 +1,29 @@
 import pygame
 from pygame.mixer import Sound
 
-import common
 import os
 
 from common import BLACK, WHITE, RED, COLORS, SCREEN_WIDTH, SCREEN_HEIGHT, ROOT_PATH
 from objects.block import Block
 from objects.scoreboard import ScoreBoard
 from scenes.win_lose import end_screen
-from objects.timer import Timer  # Added import for new timer feature
+from objects.timer import Timer
 from scenes.pause_overlay import pause_overlay
+from scenes.levels import get_level_count, get_level_pattern
 
-# WALL / BORDER 
-WALL_PADDING = 30          
-WALL_TOP_PADDING = 120     
-WALL_THICKNESS = 10         
+WALL_PADDING = 30
+WALL_TOP_PADDING = 120
 BRICKS_TOP = 140
 
-# Fonts
 pixel_font_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'font', 'Pixeboy.ttf')
 font = pygame.font.Font(pixel_font_path, 36)
 
-# Set up the initial position and speed of the paddle
 BAR_WIDTH = 200
 BAR_HEIGHT = 20
 bar_x = 0
 bar_y = 0
 speed = 0
 
-# Set up the initial position and velocity of the ball
 ball_radius = 0
 ball_position = pygame.Vector2(0, 0)
 ball_velocity = pygame.Vector2(0, 0)
@@ -39,32 +34,30 @@ delta_time = 0
 pause_requested = False
 win = None
 
-# Audio
+#FPS toggle
+show_fps = False
+
 wall_sound = None
 paddle_sound = None
 brick_sound = None
 lose_life_sound = None
 
-# Images
 paddle_image = None
 background = None
 
-# Initialize the mixer for sound
 pygame.mixer.init()
 
-# Reset globals
+
 def init():
-    global BAR_WIDTH, BAR_HEIGHT, bar_x, bar_y, speed, ball_radius, ball_position, \
+    global bar_x, bar_y, speed, ball_radius, ball_position, \
         ball_velocity, ball_max_velocity_x, clock, delta_time, pause_requested, win
 
-    # Set up the initial position and speed of the paddle
     bar_x = (SCREEN_WIDTH - BAR_WIDTH) // 2
     bar_y = SCREEN_HEIGHT - BAR_HEIGHT - 100
-    speed = 5
+    speed = 7
 
-    # Set up the initial position and velocity of the ball
     ball_radius = 10
-    ball_position = pygame.Vector2(SCREEN_WIDTH // 2, bar_y - ball_radius - 1)
+    ball_position = pygame.Vector2(SCREEN_WIDTH // 2, bar_y - ball_radius - 4)
     ball_velocity = pygame.Vector2(0, 0)
     ball_max_velocity_x = 5
 
@@ -73,13 +66,12 @@ def init():
     pause_requested = False
     win = None
 
-    # Load audio and image files
     load_assets()
+
 
 def load_assets():
     global wall_sound, paddle_sound, brick_sound, lose_life_sound, paddle_image, background
 
-    # Load sound effects
     try:
         wall_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_wall-hit.wav'))
         paddle_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_paddle-hit.wav'))
@@ -88,14 +80,12 @@ def load_assets():
     except FileNotFoundError:
         print("Warning: Could not load sound files. Game will run without sound.")
 
-    # Load paddle image
     try:
         paddle_image = pygame.image.load(os.path.join(ROOT_PATH, 'media', 'graphics', 'paddle', 'paddle.png'))
         paddle_image = pygame.transform.scale(paddle_image, (BAR_WIDTH, BAR_HEIGHT))
     except FileNotFoundError:
         print("Warning: Could not load paddle image")
 
-    # Load background image
     try:
         background = pygame.image.load(
             os.path.join(ROOT_PATH, 'media', 'graphics', 'background', 'back-black-wall-border.png'))
@@ -103,33 +93,78 @@ def load_assets():
     except FileNotFoundError:
         print("Warning: Could not load background image. Using black background.")
 
-# This controls the initial setup of the breakout game and calls the game loop function
+
 def main_controller(screen, debug_mode=""):
     init()
+    # Default level
     level = 1
 
-    # Set up the screen
+    # Debug level start shortcuts
+    if debug_mode == "level_1":
+        level = 1
+    elif debug_mode == "level_2":
+        level = 2
+    elif debug_mode == "level_3":
+        level = 3
+    elif debug_mode == "level_4":
+        level = 4
+    elif debug_mode == "level_5":
+        level = 5
+
+    max_levels = get_level_count()
+
     pygame.display.set_caption("Breakout Game")
-    # Initialize the scoreboard for tracking score, lives, and high score
     scoreboard = ScoreBoard(screen)
+
+    # Turn on FPS when entering a debug mode game
+    global show_fps
+    show_fps = debug_mode is not False
+
     if debug_mode == "one_block":
+        # Special debug mode: single block, no level progression
         level = 0
+        max_levels = 0
         scoreboard.lives = 1
 
-    # Added timer setup (stopwatch for normal, countdown for challenge mode)
-    timer = Timer(screen, mode="stopwatch")  # default
+    timer = Timer(screen, mode="stopwatch")
     if debug_mode == "countdown":
         timer = Timer(screen, mode="countdown", countdown_time=10)
 
-    # Generate the block layout
     blocks = define_blocks(screen, level)
     draw_bricks(screen, blocks)
 
     running = True
     while running:
-        running = game_loop(screen, scoreboard, timer, blocks, debug_mode)
+        status = game_loop(screen, scoreboard, timer, blocks, debug_mode, level)
 
-    # Added initials handling from win_lose screen + high score save with time
+        if status == "running":
+            continue
+
+        if status == "quit":
+            running = False
+
+        elif status == "game_over":
+            running = False
+
+        elif status == "level_complete":
+            # For one_block debug, treat level clear as a simple win and exit
+            if debug_mode == "one_block":
+                timer.pause()
+                set_win(True)
+                running = False
+            else:
+                show_level_complete(screen, level)
+                level += 1
+
+                if level > max_levels:
+                    timer.pause()
+                    set_win(True)
+                    running = False
+                else:
+                    reset_ball_and_paddle()
+                    blocks = define_blocks(screen, level)
+                    # Timer is already paused; it will resume when SPACE is pressed
+
     replay = False
     if win is not None:
         replay, initials = end_screen(screen, win, scoreboard.score)
@@ -137,178 +172,245 @@ def main_controller(screen, debug_mode=""):
 
     return replay
 
+# ---------- Block Layout ----------
 def define_blocks(screen, level, wall_padding=WALL_PADDING):
     blocks = []
-    num_blocks = 64
     block_width, block_height = 60, 25
     block_space = 10
-    row = column = 0
 
-    # Debug mode
+    # Debug level: single block in the normal grid layout
     if level == 0:
         num_blocks = 1
+        row = column = 0
 
-    # Calculate how many blocks fit per row inside the wall
-    usable_width = screen.get_width() - (wall_padding * 2)
-    blocks_per_row = (usable_width + block_space) // (block_width + block_space)
+        usable_width = screen.get_width() - (wall_padding * 2)
+        blocks_per_row = (usable_width + block_space) // (block_width + block_space)
 
-    # Calculate the total width of all blocks in a row
-    total_blocks_width = blocks_per_row * block_width + (blocks_per_row - 1) * block_space
-    # Calculate left offset to center the blocks
+        total_blocks_width = blocks_per_row * block_width + (blocks_per_row - 1) * block_space
+        left_offset = (screen.get_width() - total_blocks_width) // 2
+
+        for i in range(num_blocks):
+            if column >= blocks_per_row:
+                row += 1
+                column = 0
+
+            block_x = left_offset + column * (block_width + block_space)
+            block_y = BRICKS_TOP + (block_height * row) + (block_space * row)
+
+            color = COLORS[row % len(COLORS)]
+            blocks.append(Block(pygame.Rect(block_x, block_y, block_width, block_height), color))
+            column += 1
+
+        return blocks
+
+    # Normal levels: use layouts from scenes.levels
+    layout = get_level_pattern(level)
+    if not layout:
+        return blocks
+
+    rows = len(layout)
+    cols = len(layout[0]) if rows > 0 else 0
+    if cols == 0:
+        return blocks
+
+    total_blocks_width = cols * block_width + (cols - 1) * block_space
     left_offset = (screen.get_width() - total_blocks_width) // 2
 
-    for i in range(num_blocks):
-        # Move to next row when needed (check BEFORE calculating position)
-        if column >= blocks_per_row:
-            row += 1
-            column = 0
+    for row_index, row in enumerate(layout):
+        for col_index, cell in enumerate(row):
 
-        # Calculate block's X position - ALL blocks use the same left_offset
-        block_x = left_offset + column * (block_width + block_space)
+            # Skip empty spaces
+            if cell == 0:
+                continue
 
-        # Y position also offset by BRICKS_TOP
-        block_y = BRICKS_TOP + (block_height * row) + (block_space * row)
+            block_x = left_offset + col_index * (block_width + block_space)
+            block_y = BRICKS_TOP + (block_height * row_index) + (block_space * row_index)
 
-        color = COLORS[row % len(COLORS)]
-        blocks.append(Block(pygame.Rect(block_x, block_y, block_width, block_height), color))
-        column += 1
+
+            # CASE 1 — old system (1 or 2)
+            if isinstance(cell, int):
+                block_type = cell
+                color = COLORS[row_index % len(COLORS)]
+
+            # CASE 2 — (type, colorIndex)
+            elif isinstance(cell, (tuple, list)):
+                block_type = cell[0]
+                color_index = cell[1] % len(COLORS)
+                color = COLORS[color_index]
+            else:
+                continue
+
+            # -------- CENTER SQUARE BLOCKS (2 HP) --------
+            if block_type == 2:
+                offset_x = (block_width - 35) // 2
+                offset_y = (block_height - 35) // 2
+            else:
+                offset_x = 0
+                offset_y = 0
+
+            block_x += offset_x
+            block_y += offset_y
+
+            # create block
+            blocks.append(Block(block_x, block_y, color, block_type))
 
     return blocks
 
-def game_loop(screen, scoreboard, timer, blocks, debug_mode):
+def game_loop(screen, scoreboard, timer, blocks, debug_mode, level):
     global ball_position, pause_requested, delta_time
 
-    # Draw walls, paddle, ball, scoreboard, and timer
     walls = draw_wall(screen)
     bar = draw_bar(screen)
+    draw_level(screen, level)
     ball = pygame.draw.circle(screen, WHITE, ball_position, ball_radius)
     scoreboard.draw()
     timer.draw()
 
-    # Event handling
     if not handle_input(bar, ball, timer):
-        return False
+        return "quit"
 
-    # Draw the blocks and check for collisions
     draw_bricks(screen, blocks)
     scoreboard.score += detect_collision(ball, blocks)
 
-    # End the game if all blocks are cleared
     if len(blocks) == 0:
-        timer.pause()  # pause timer when level is cleared
-        set_win()
-        return False
+        timer.pause()
+        return "level_complete"
 
-    # Move the ball - False when the ball hits the bottom of the screen
     if not move_ball(screen, walls, bar, ball):
-        # Pause game, update lives, returns False when out of lives
         if not update_scoreboard(screen, scoreboard, timer):
-            return False
+            return "game_over"
 
-    # Check if countdown time has run out (for countdown mode)
     if debug_mode == "countdown" and timer.get_time() <= 0:
         set_win(False)
-        return False
+        return "game_over"
 
-    # Pause handling
     if pause_requested:
         if not pause_game(screen, timer):
-            # Player pressed quit on pause menu
-            return False
+            return "quit"
         else:
             timer.resume()
 
-    # Update the timer and display
     timer.update()
+
+    # ---------- Debug FPS ----------
+    if show_fps:
+        fps = int(clock.get_fps())
+        fps_text = font.render(f"FPS: {fps}", True, (255, 255, 0))
+
+        # Bottom center of the screen
+        fps_rect = fps_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 40))
+        screen.blit(fps_text, fps_rect)
+
     pygame.display.flip()
 
-    # Update delta_time tick(Frames per Second)
     delta_time = clock.tick(60)
-    return True
+    return "running"
 
+# ---------- Wall ----------
 def draw_wall(screen):
-    # Fill the screen with black color
     if background:
         screen.blit(background, (0, 0))
     else:
         screen.fill(BLACK)
-    # Create the inner wall rectangle (inside screen edges)
+
     wall_bottom = SCREEN_HEIGHT - 150
 
     return pygame.Rect(
         WALL_PADDING,
         WALL_TOP_PADDING,
         SCREEN_WIDTH - WALL_PADDING * 2,
-        wall_bottom - WALL_TOP_PADDING  # height from top wall to wall_bottom
+        wall_bottom - WALL_TOP_PADDING
     )
 
+# ---------- Draw Paddle ----------
 def draw_bar(screen):
     bar = pygame.Rect(bar_x, bar_y, BAR_WIDTH, BAR_HEIGHT)
+    image_y_offset = -11
+
     if paddle_image:
-        screen.blit(paddle_image, (bar_x, bar_y))
+        screen.blit(paddle_image, (bar_x, bar_y + image_y_offset))
     else:
         pygame.draw.rect(screen, RED, bar)
+
     return bar
+
+def draw_level(screen, level):
+    text = font.render(f"LEVEL {level}", True, (255, 255, 0))
+    rect = text.get_rect(center=(SCREEN_WIDTH // 2, WALL_TOP_PADDING - 40))
+    screen.blit(text, rect)
+
+def reset_ball_and_paddle():
+    global ball_position, ball_velocity, bar_x
+    ball_position = pygame.Vector2(SCREEN_WIDTH // 2, bar_y - ball_radius - 4)
+    bar_x = (SCREEN_WIDTH - BAR_WIDTH) // 2
+    ball_velocity.x = 0
+    ball_velocity.y = 0
 
 def handle_input(bar, ball, timer):
     global pause_requested, bar_x
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             return False
         if event.type == pygame.KEYDOWN:
-            # Launch ball on first space press
             if event.key == pygame.K_SPACE and ball_velocity.y == 0:
                 ball_velocity.x = get_x_angle(bar, ball)
                 ball_velocity.y = -5
                 timer.resume()
-            # Request pause
             if event.key == pygame.K_ESCAPE:
                 pause_requested = True
 
-    # Key presses handling
     keys = pygame.key.get_pressed()
+
     if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-        if bar_x + BAR_WIDTH < SCREEN_WIDTH and not (bar_x > ball_position.x - ball_radius and ball_velocity.y == 0):
+        if bar_x + BAR_WIDTH < SCREEN_WIDTH - WALL_PADDING + 2 and not (bar_x > ball_position.x - ball_radius and ball_velocity.y == 0):
             bar_x += speed
+
     if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-        if bar_x > 0 and not (bar_x + BAR_WIDTH < ball_position.x + ball_radius and ball_velocity.y == 0):
+        if bar_x > WALL_PADDING - 2 and not (bar_x + BAR_WIDTH < ball_position.x + ball_radius and ball_velocity.y == 0):
             bar_x -= speed
 
     return True
 
+
+# ---------- Block Drawing ----------
 def draw_bricks(screen, blocks):
     for block in blocks:
-        # Try to draw brick image, fallback to rectangle
         if block.image is not None:
             screen.blit(block.image, block.rect)
         else:
             pygame.draw.rect(screen, block.color, block.rect)
 
 
+# ---------- Block Collision ----------
 def detect_collision(ball, blocks):
-    block = None
     score = 0
-    block_ind = ball.collidelist(blocks)
+    block_index = ball.collidelist(blocks)
 
-    if block_ind != -1:
-        block = blocks[block_ind]
+    if block_index != -1:
+        block = blocks[block_index]
+        ball_rect = pygame.Rect(ball)
 
-    if block is not None:
-        if ball.top >= block.rect.bottom - 2 or ball.bottom <= block.rect.top + 5:
+        if abs(ball_rect.bottom - block.rect.top) < 8 and ball_velocity.y > 0:
             ball_velocity.y *= -1
-        else:
+        elif abs(ball_rect.top - block.rect.bottom) < 8 and ball_velocity.y < 0:
+            ball_velocity.y *= -1
+        elif abs(ball_rect.right - block.rect.left) < 8 and ball_velocity.x > 0:
             ball_velocity.x *= -1
+        elif abs(ball_rect.left - block.rect.right) < 8 and ball_velocity.x < 0:
+            ball_velocity.x *= -1
+        else:
+            ball_velocity.y *= -1
 
-        # Remove the block from the list of blocks
-        blocks.remove(block)
-        # Remove any remaining references to the hit block to make sure Python's garbage collection deletes it
-        del block
+        # Use the Block HP logic
+        should_destroy = block.hit()
+        if should_destroy:
+            del blocks[block_index]
 
-        # PLAY BRICK SOUND
-        if isinstance(brick_sound, Sound) :
-            brick_sound.play()
+            if isinstance(brick_sound, Sound):
+                brick_sound.play()
 
-        score = 50
+            score = 50
 
     return score
 
@@ -318,13 +420,9 @@ def move_ball(screen, walls, bar, ball):
         screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, SCREEN_HEIGHT // 2))
         return True
     else:
-        # Move the ball
         ball_position.move_towards_ip(ball_position + ball_velocity, 10)
 
-        # Wall collision detection (inner wall - left, right, top)
         wall_check(walls)
-
-        # Is the ball touching the paddle
         paddle_check(bar, ball)
 
         if ball_position.y - ball_radius > SCREEN_HEIGHT:
@@ -335,44 +433,39 @@ def move_ball(screen, walls, bar, ball):
 def wall_check(walls):
     global ball_velocity
 
-    # Left wall
     if ball_position.x - ball_radius <= walls.left:
         ball_velocity.x *= -1
         ball_position.x = walls.left + ball_radius
         if isinstance(wall_sound, Sound):
             wall_sound.play()
 
-    # Right wall
     if ball_position.x + ball_radius >= walls.right:
         ball_velocity.x *= -1
         ball_position.x = walls.right - ball_radius
         if isinstance(wall_sound, Sound):
             wall_sound.play()
 
-    # Top wall
     if ball_position.y - ball_radius <= walls.top:
         ball_velocity.y *= -1
         ball_position.y = walls.top + ball_radius
         if isinstance(wall_sound, Sound):
             wall_sound.play()
 
+
+# ---------- Paddle Collision ----------
 def paddle_check(bar, ball):
     if bar.colliderect(ball):
         ball_velocity.x = get_x_angle(bar, ball)
-        # Send the ball back up
         ball_velocity.y *= -1
-        # Nudge the ball above the paddle to avoid sticking
         ball_position.y = bar.top - ball_radius - 1
-        # PLAY PADDLE SOUND
+
         if isinstance(paddle_sound, Sound):
             paddle_sound.play()
 
+
 def get_x_angle(bar, ball):
-    # Calculate where on the paddle the ball collided. Invert it so positive offset is right and negative is left
     ball_offset = (bar.centerx - ball.centerx) * -1
-    # Using the max x velocity, determine how much weight to apply to the offset to set an appropriate x speed
     ratio = ball_max_velocity_x / (BAR_WIDTH / 2)
-    # Set the x velocity based on the offset and ratio
     return ball_offset * ratio
 
 def update_scoreboard(screen, scoreboard, timer):
@@ -380,30 +473,33 @@ def update_scoreboard(screen, scoreboard, timer):
     scoreboard.lose_life()
     if isinstance(lose_life_sound, Sound):
         lose_life_sound.play()
-    timer.pause()  # pause timer when a life is lost
+
+    timer.pause()
 
     if scoreboard.lives > 0:
-        # Reset ball and paddle
-        ball_position = pygame.Vector2(SCREEN_WIDTH // 2, bar_y - ball_radius - 1)
-        bar_x = (SCREEN_WIDTH - BAR_WIDTH) // 2
-        ball_velocity.x = 0
-        ball_velocity.y = 0
+        reset_ball_and_paddle()
 
-        # Show "Life lost" message and wait 3 seconds
         message = font.render(f"Lives Left: {scoreboard.lives}", True, WHITE)
         screen.blit(message, (SCREEN_WIDTH // 2 - message.get_width() // 2, SCREEN_HEIGHT // 2))
         pygame.display.flip()
         pygame.time.wait(3000)
         return True
     else:
-        timer.pause()  # stop timer on final life loss
+        timer.pause()
         set_win(False)
-        # Out of lives, end game
         return False
+
+def show_level_complete(screen, level):
+    message = font.render(f"LEVEL {level} COMPLETE!", True, (255, 255, 0))
+    message_rect = message.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    screen.blit(message, message_rect)
+    pygame.display.flip()
+    pygame.time.wait(1000)
 
 def set_win(state=True):
     global win
     win = state
+
 
 def pause_game(screen, timer):
     global pause_requested
@@ -413,14 +509,11 @@ def pause_game(screen, timer):
     choice = pause_overlay(snapshot)
     if choice == "menu":
         return False
+
     pygame.event.clear()
     pause_requested = False
     return True
 
+
 def play(screen, debug_mode=""):
     return main_controller(screen, debug_mode)
-
-if __name__ == "__main__":
-    # Initialize Pygame
-    pygame.init()
-    main_controller(pygame.display.set_mode((common.SCREEN_WIDTH, common.SCREEN_HEIGHT)))
