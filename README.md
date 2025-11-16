@@ -30,9 +30,9 @@ PyCharm 3.13+ (IDE)
 
 ## Assets
 
-Audio from [Rubberduck](https://opengameart.org/users/rubberduck) and [LeohPaz](https://opengameart.org/users/leohpaz) on [OpenGameArt](https://opengameart.org)
+Audio from [Rubberduck](https://opengameart.org/users/rubberduck), [LeohPaz](https://opengameart.org/users/leohpaz), and [Jalastram] (https://opengameart.org/users/jalastram) on [OpenGameArt] [Dklon] (https://opengameart.org/users/dklon) on (https://opengameart.org)
 
-Coin Particle from [Truezipp](https://opengameart.org/users/truezipp) on [OpenGameArt](https://opengameart.org)
+Particles and Item from [Truezipp](https://opengameart.org/users/truezipp), [Vircon32] (https://opengameart.org/users/vircon32), and [NicoleMarieton] (https://opengameart.org/users/nicolemariet-0) on [OpenGameArt](https://opengameart.org)
 
 Assets under license [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
 

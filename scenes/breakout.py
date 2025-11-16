@@ -10,6 +10,10 @@ from scenes.win_lose import end_screen
 from objects.timer import Timer
 from scenes.pause_overlay import pause_overlay
 from scenes.levels import get_level_count, get_level_pattern
+from objects.particle import Particle
+from objects.coin import Coin
+from objects.powerup import PowerUp, BlueBlast
+import random
 
 WALL_PADDING = 30
 WALL_TOP_PADDING = 120
@@ -28,6 +32,14 @@ ball_radius = 0
 ball_position = pygame.Vector2(0, 0)
 ball_velocity = pygame.Vector2(0, 0)
 ball_max_velocity_x = 0
+blast_active = False
+blast_timer = 0
+blast_duration = 300
+paddle_shrink_active = False
+paddle_shrink_timer = 0
+paddle_shrink_duration = 300  
+original_paddle_width = 200
+small_paddle_width = 100
 
 clock = pygame.time.Clock()
 delta_time = 0
@@ -70,13 +82,15 @@ def init():
 
 
 def load_assets():
-    global wall_sound, paddle_sound, brick_sound, lose_life_sound, paddle_image, background
+    global wall_sound, paddle_sound, brick_sound, lose_life_sound, coin_sound, blast_shoot_sound, paddle_image, background
 
     try:
         wall_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_wall-hit.wav'))
         paddle_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_paddle-hit.wav'))
         brick_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_brick-hit.ogg'))
         lose_life_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_lose-lives.wav'))
+        coin_sound = Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_collect_coin.ogg"))
+        blast_shoot_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_blast_shoot.wav'))
     except FileNotFoundError:
         print("Warning: Could not load sound files. Game will run without sound.")
 
@@ -132,10 +146,15 @@ def main_controller(screen, debug_mode=""):
 
     blocks = define_blocks(screen, level)
     draw_bricks(screen, blocks)
+    particles = []
+    coins = []
+    powerups = []
+    blasts = []
+  
 
     running = True
     while running:
-        status = game_loop(screen, scoreboard, timer, blocks, debug_mode, level)
+        status = game_loop(screen, scoreboard, timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration)
 
         if status == "running":
             continue
@@ -256,12 +275,13 @@ def define_blocks(screen, level, wall_padding=WALL_PADDING):
 
     return blocks
 
-def game_loop(screen, scoreboard, timer, blocks, debug_mode, level):
-    global ball_position, pause_requested, delta_time
+def game_loop(screen, scoreboard, timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration):
+    global ball_position, pause_requested, delta_time, blast_active, blast_timer, paddle_shrink_active, paddle_shrink_timer
 
     walls = draw_wall(screen)
     bar = draw_bar(screen)
     draw_level(screen, level)
+
     ball = pygame.draw.circle(screen, WHITE, ball_position, ball_radius)
     scoreboard.draw()
     timer.draw()
@@ -270,7 +290,105 @@ def game_loop(screen, scoreboard, timer, blocks, debug_mode, level):
         return "quit"
 
     draw_bricks(screen, blocks)
-    scoreboard.score += detect_collision(ball, blocks)
+    scoreboard.score += detect_collision(ball, blocks, particles, coins, powerups)
+
+    # Update and draw particles
+    for particle in particles[:]:
+        particle.update()
+        particle.draw(screen)
+        if particle.is_dead():
+            particles.remove(particle)
+
+    # Update and draw coins
+    for coin in coins[:]:
+        coin.update()
+        coin.draw(screen)
+        if coin.is_off_screen():
+            coins.remove(coin)
+    
+    # Check if paddle collects coin
+    for coin in coins[:]:
+        if coin.rect.bottom >= bar.top and coin.rect.colliderect(bar):
+            scoreboard.add_points(50)  
+            coins.remove(coin)
+            if coin_sound:
+                coin_sound.play()
+
+    # Update and draw powerups
+    for powerup in powerups[:]:
+        powerup.update()
+        powerup.draw(screen)
+        if powerup.is_off_screen():
+                powerups.remove(powerup)
+
+    # Check if paddle collects powerup
+    for powerup in powerups[:]:
+        if bar.colliderect(powerup.rect):
+            powerups.remove(powerup)
+
+            if powerup.type == "blast":
+                blast_active = True
+                blast_timer = blast_duration
+            elif powerup.type == "small_paddle":
+                paddle_shrink_active = True
+                paddle_shrink_timer = paddle_shrink_duration
+                pass
+
+            if coin_sound:
+                coin_sound.play()
+    # Auto-shoot blasts when active
+    if blast_active and blast_timer > 0:
+        blast_timer -= 1
+    
+        # Shoot a blast every 10 frames (0.16 seconds)
+        if blast_timer % 10 == 0:
+            blasts.append(BlueBlast(bar.centerx - 10, bar.top - 20))
+            if blast_shoot_sound:
+                blast_shoot_sound.play()
+
+    
+        # Deactivate when timer runs out
+        if blast_timer <= 0:
+            blast_active = False
+
+            # Handle paddle shrinking
+        if paddle_shrink_active and paddle_shrink_timer > 0:
+            paddle_shrink_timer -= 1
+        
+        if paddle_shrink_active and paddle_shrink_timer <= 0:
+            paddle_shrink_active = False
+
+    # Update and draw blasts
+    for blast in blasts[:]:
+        blast.update()
+        blast.draw(screen)
+        if blast.is_off_screen():
+            blasts.remove(blast)
+    
+    # Check if blasts hit bricks
+    for blast in blasts[:]:
+        for block in blocks:
+            if block.rect.colliderect(blast.rect):
+                # Create particles when brick breaks
+                for _ in range(15):
+                    particles.append(Particle(block.rect.centerx, block.rect.centery, block.color))
+                
+                # 30% chance to drop a coin
+                if random.random() < 0.40:
+                    coins.append(Coin(block.rect.centerx - 15, block.rect.centery))
+                
+                # 20% chance to drop a powerup
+                if random.random() < 0.20:
+                    powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery))
+                
+                blocks.remove(block)
+                blasts.remove(blast)
+                scoreboard.add_points(50)
+                
+                if isinstance(brick_sound, Sound):
+                    brick_sound.play()
+                break
+             
 
     if len(blocks) == 0:
         timer.pause()
@@ -324,11 +442,20 @@ def draw_wall(screen):
 
 # ---------- Draw Paddle ----------
 def draw_bar(screen):
-    bar = pygame.Rect(bar_x, bar_y, BAR_WIDTH, BAR_HEIGHT)
+    global paddle_shrink_active
+    # Use small or normal paddle width
+    if paddle_shrink_active:
+        current_width = small_paddle_width
+    else:
+        current_width = original_paddle_width
+    
+    bar = pygame.Rect(bar_x, bar_y, current_width, BAR_HEIGHT)
     image_y_offset = -11
 
     if paddle_image:
-        screen.blit(paddle_image, (bar_x, bar_y + image_y_offset))
+        # Scale paddle image to current width
+        scaled_paddle = pygame.transform.scale(paddle_image, (current_width, BAR_HEIGHT))
+        screen.blit(scaled_paddle, (bar_x, bar_y + image_y_offset))
     else:
         pygame.draw.rect(screen, RED, bar)
 
@@ -383,7 +510,7 @@ def draw_bricks(screen, blocks):
 
 
 # ---------- Block Collision ----------
-def detect_collision(ball, blocks):
+def detect_collision(ball, blocks, particles, coins, powerups):
     score = 0
     block_index = ball.collidelist(blocks)
 
@@ -405,6 +532,20 @@ def detect_collision(ball, blocks):
         # Use the Block HP logic
         should_destroy = block.hit()
         if should_destroy:
+            # Create particles when brick breaks
+            for _ in range(15):
+                particles.append(Particle(block.rect.centerx, block.rect.centery, block.color))
+
+            # 40% chance to drop a coin
+            if random.random() < 0.40:
+                coins.append(Coin(block.rect.centerx - 15, block.rect.centery))
+            
+            # 20% chance to drop a powerup
+            if random.random() < 0.20:
+                # 50/50 chance
+                powerup_type = random.choice(["blast", "small_paddle"])
+                powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, powerup_type))
+            
             del blocks[block_index]
 
             if isinstance(brick_sound, Sound):
