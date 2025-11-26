@@ -1,7 +1,7 @@
 import pygame
 import os
 import sys
-from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW
+from common import SCREEN_WIDTH, SCREEN_HEIGHT, YELLOW, ROOT_PATH
 from scenes.win_lose import draw_retro_background
 from datetime import datetime, timezone, timedelta
 
@@ -15,14 +15,14 @@ pygame.mixer.init()
 # Load sound effects
 
 try:
-    menu_click_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_selection_click.wav"))
+    menu_click_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_selection_click.wav"))
 except:
     print("Warning: Could not load menu click sound.")
     menu_click_sound = None
 
 # ---------- FONT UTILITIES ----------
 def load_custom_font(size):
-    font_path = os.path.join(os.path.dirname(__file__), "..", "media", "graphics", "font", "Pixeboy.ttf")
+    font_path = os.path.join(ROOT_PATH, "media", "graphics", "font", "Pixeboy.ttf")
     return pygame.font.Font(font_path, size)
 
 
@@ -47,8 +47,7 @@ def format_time(seconds):
 
 def reset_today_scores_if_new_day(today_file):
     """Clear today's scores if the date has changed."""
-    base_path = os.path.dirname(today_file)
-    last_reset_path = os.path.join(base_path, "last_reset.txt")
+    last_reset_path = "last_reset.txt"
 
     # Central Time offset
     central_offset = timedelta(hours=-5)
@@ -76,9 +75,8 @@ def show_high_scores(screen):
     header_font = load_custom_font(40)
     text_font = load_custom_font(48)
 
-    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    today_file = os.path.join(base_path, "today_scores.txt")
-    all_time_file = os.path.join(base_path, "records_alltime.txt")
+    today_file = "today_scores.txt"
+    all_time_file = "records_alltime.txt"
 
     # Reset today's scores if the date has changed
     reset_today_scores_if_new_day(today_file)

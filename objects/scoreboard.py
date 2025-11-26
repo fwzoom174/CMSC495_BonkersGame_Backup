@@ -1,6 +1,7 @@
 import pygame
 import os
-from common import SCREEN_WIDTH, SCREEN_HEIGHT
+from common import SCREEN_WIDTH, SCREEN_HEIGHT, ROOT_PATH
+
 
 def crop_surface(surface):
     """Remove transparent edges from an image."""
@@ -14,7 +15,7 @@ class ScoreBoard:
         self.screen = screen
 
         # Load font
-        font_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'font', 'Pixeboy.ttf')
+        font_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'font', 'Pixeboy.ttf')
         self.font = pygame.font.Font(font_path, 40)
 
         # Score values
@@ -33,7 +34,7 @@ class ScoreBoard:
         self._high_surface = None
         self._best_time_surface = None
 
-        heart_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'items', 'heart.png')
+        heart_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'items', 'heart.png')
         raw_heart = pygame.image.load(heart_path).convert_alpha()
 
         # Auto-crop transparent edges
@@ -55,8 +56,7 @@ class ScoreBoard:
 
     # ---------- FILE HANDLING ---------- #
     def load_high_score(self):
-        file_path = os.path.join(os.path.dirname(__file__), "../records.txt")
-        file_path = os.path.abspath(file_path)
+        file_path = "records.txt"
 
         # Create file if missing
         if not os.path.exists(file_path):
@@ -81,10 +81,9 @@ class ScoreBoard:
 
     def save_high_score(self, current_time=None, initials="YOU"):
         """Save new high score and record both today's and all-time scores."""
-        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        today_file = os.path.join(base_path, "today_scores.txt")
-        alltime_file = os.path.join(base_path, "records_alltime.txt")
-        records_file = os.path.join(base_path, "records.txt")
+        today_file = "today_scores.txt"
+        alltime_file = "records_alltime.txt"
+        records_file = "records.txt"
 
         initials = (initials or "").strip().upper()
         if initials == "":
@@ -101,6 +100,7 @@ class ScoreBoard:
         with open(alltime_file, "a", encoding="utf8") as f:
             f.write(line)
 
+        # Update quick display file used in game HUD
         if self.score > self.high_score:
             self.high_score = self.score
             self.best_time = current_time
@@ -111,18 +111,6 @@ class ScoreBoard:
         with open(records_file, "w", encoding="utf8") as f:
             f.write(f"{self.high_score}\n{self.best_time}")
 
-        # Update quick display file used in game HUD
-        file_path = os.path.join(base_path, "records.txt")
-        if self.score > self.high_score:
-            self.high_score = self.score
-            if current_time is not None:
-                self.best_time = current_time
-        elif self.score == self.high_score and current_time is not None:
-            if self.best_time == 0 or current_time < self.best_time:
-                self.best_time = current_time
-
-        with open(file_path, "w") as f:
-            f.write(f"{self.high_score}\n{self.best_time}")
 
     # ---------- DRAW METHOD ---------- #
     def draw(self):

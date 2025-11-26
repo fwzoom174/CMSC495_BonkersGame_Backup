@@ -1,19 +1,20 @@
 import pygame
 import os
 import sys
-from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, RED, YELLOW
+from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, RED, YELLOW, ROOT_PATH
+
 
 # ---------- TUTORIAL OVERLAY ----------
 def show_tutorial_overlay(snapshot):
     screen = pygame.display.get_surface()
     clock = pygame.time.Clock()
 
-    font_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'font', 'Pixeboy.ttf')
+    font_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'font', 'Pixeboy.ttf')
     font_big = pygame.font.Font(font_path, 72)
     font_small = pygame.font.Font(font_path, 36)
 
     # Load key images
-    tutorial_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'tutorial')
+    tutorial_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'tutorial')
     arrow_img = pygame.image.load(os.path.join(tutorial_path, 'arrow_keys.png'))
     wasd_img = pygame.image.load(os.path.join(tutorial_path, 'wasd_keys.png'))
 
