@@ -84,34 +84,32 @@ class ScoreBoard:
         base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         today_file = os.path.join(base_path, "today_scores.txt")
         alltime_file = os.path.join(base_path, "records_alltime.txt")
+        records_file = os.path.join(base_path, "records.txt")
 
-        # Save player initials, score, and time to today's records
-        with open(today_file, "a") as f:
-            f.write(f"{initials} {self.score} {current_time or 0}\n")
+        initials = (initials or "").strip().upper()
+        if initials == "":
+            initials = "AAA"
 
-        # Load existing all-time records
-        alltime_records = []
-        if os.path.exists(alltime_file):
-            with open(alltime_file, "r") as f:
-                for line in f:
-                    parts = line.strip().split()
-                    if len(parts) == 3:
-                        name, score, time_val = parts
-                        alltime_records.append((name.upper(), int(score), float(time_val)))
+        if current_time is None:
+            current_time = 0.0
 
-        # Add the new record
-        alltime_records.append((initials, self.score, current_time or 0.0))
+        line = f"{initials} {self.score} {current_time:.2f}\n"
 
-        # Sort by highest score, then fastest time
-        alltime_records.sort(key=lambda x: (-x[1], x[2]))
+        with open(today_file, "a", encoding="utf8") as f:
+            f.write(line)
 
-        # Keep top 10 in all-time file
-        alltime_records = alltime_records[:10]
+        with open(alltime_file, "a", encoding="utf8") as f:
+            f.write(line)
 
-        with open(alltime_file, "w") as f:
-            for entry in alltime_records:
-                name, score, time_val = entry
-                f.write(f"{name} {score} {time_val}\n")
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.best_time = current_time
+        elif self.score == self.high_score:
+            if self.best_time == 0 or current_time < self.best_time:
+                self.best_time = current_time
+
+        with open(records_file, "w", encoding="utf8") as f:
+            f.write(f"{self.high_score}\n{self.best_time}")
 
         # Update quick display file used in game HUD
         file_path = os.path.join(base_path, "records.txt")

@@ -35,10 +35,10 @@ Notes:
 
 # ---------- LEVEL 1 ----------
 level_1 = [
-    [(1,0)]*16,
-    [(1,1)]*16,
-    [(1,2)]*16,
-    [(1,3)]*16,
+    [(1, 0)] * 16,
+    [(1, 1)] * 16,
+    [(1, 2)] * 16,
+    [(1, 3)] * 16,
 ]
 
 # ---------- LEVEL 2 ----------
@@ -89,6 +89,14 @@ LEVEL_LAYOUTS = [
     level_4,
     level_5
 ]
+# Settings for each level
+LEVEL_SETTINGS = [
+    {"timer": "stopwatch"},                        # Level 1
+    {"timer": "stopwatch"},                        # Level 2
+    {"timer": "stopwatch"},                        # Level 3
+    {"timer": "stopwatch"},                        # Level 4
+    {"timer": "countdown", "time_limit": 60}       # Level 5 (Final boss)
+]
 
 def get_level_count():
     return len(LEVEL_LAYOUTS)
@@ -99,3 +107,11 @@ def get_level_pattern(level_number):
     if level_number > len(LEVEL_LAYOUTS):
         level_number = len(LEVEL_LAYOUTS)
     return LEVEL_LAYOUTS[level_number - 1]
+
+
+def get_level_settings(level_number):
+    if level_number < 1:
+        level_number = 1
+    if level_number > len(LEVEL_SETTINGS):
+        level_number = len(LEVEL_SETTINGS)
+    return LEVEL_SETTINGS[level_number - 1]

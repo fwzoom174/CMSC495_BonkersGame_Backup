@@ -1,0 +1,9 @@
+{
+  "tutorial_enabled": false,
+  "tutorial_has_run": false,
+  "sound_enabled": false,
+  "music_enabled": false,
+  "show_fps": false,
+  "mouse_enabled": false,
+  "colorblind_mode": false
+}

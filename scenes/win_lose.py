@@ -162,6 +162,7 @@ def get_player_initials(screen, score):
     return initials
 
 def end_screen(screen, win=True, score=500):
+    pygame.mouse.set_visible(True)
     pygame.display.set_caption("Congratulations!" if win else "Game Over")
 
     if win and win_sound:
