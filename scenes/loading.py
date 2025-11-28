@@ -80,4 +80,4 @@ def show_loading_screen(screen, font):
         screen.blit(percent_text, percent_rect)
         
         pygame.display.flip()
-        pygame.time.wait(50)  
+        pygame.time.wait(10)  
