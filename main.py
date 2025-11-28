@@ -4,7 +4,7 @@ import common
 import os
 import json
 
-from common import RED, WHITE, GREEN, BLUE, SCREEN_WIDTH, SCREEN_HEIGHT
+from common import RED, WHITE, GREEN, BLUE, SCREEN_WIDTH, SCREEN_HEIGHT, ROOT_PATH
 from scenes import breakout, highscores
 from scenes.loading import show_loading_screen
 
@@ -13,13 +13,13 @@ pygame.init()
 pygame.mixer.init()
 
 try:
-    menu_click_sound = pygame.mixer.Sound("media/audio/media_audio_selection_click.wav")
+    menu_click_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_selection_click.wav"))
 except:
     print("Warning: Could not load menu click sound.")
     menu_click_sound = None
 
 try:
-    menu_background = pygame.image.load("media/graphics/background/back-landscape-grid.png")
+    menu_background = pygame.image.load(os.path.join(ROOT_PATH, "media", "graphics", "background", "back-landscape-grid.png"))
 except:
     print("Warning: Could not load background image.")
     menu_background = None

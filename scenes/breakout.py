@@ -84,7 +84,7 @@ ball_image = None
 debug_countdown_mode = False
 
 # ---- Load config ----
-config_path = os.path.join(ROOT_PATH, "config.json")
+config_path = "config.json"
 
 if os.path.exists(config_path):
     with open(config_path, "r") as f:
@@ -236,7 +236,6 @@ def main_controller(screen, debug_mode="", character_image=None):
     tutorial_phase = "move"
 
     # Reload config fresh when starting a new game
-    config_path = os.path.join(ROOT_PATH, "config.json")
     with open(config_path, "r") as f:
         cfg = json.load(f)
 

@@ -1,7 +1,7 @@
 import pygame
 import sys
 import os
-from common import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, RED, ORANGE
+from common import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, RED, ORANGE, ROOT_PATH
 
 # Initialize Pygame
 pygame.init()
@@ -10,9 +10,9 @@ pygame.mixer.init()
 
 # Load game over sound
 try:
-    game_over_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_game_over.wav"))
-    win_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_win.wav"))
-    menu_click_sound = pygame.mixer.Sound(os.path.join("media", "audio", "media_audio_selection_click.wav"))
+    game_over_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_game_over.wav"))
+    win_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_win.wav"))
+    menu_click_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_selection_click.wav"))
 
 except:
     print("Warning: Could not load game over sound.")
@@ -26,11 +26,11 @@ YELLOW = (254, 175, 54)
 
 # ---------- FONT & GRAPHICS UTILITIES ----------
 def load_custom_font(size, bold=False):
-    font_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'font', 'Pixeboy.ttf')
+    font_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'font', 'Pixeboy.ttf')
     return pygame.font.Font(font_path, size)
 
 def draw_retro_background(screen):
-    background = pygame.image.load(os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'background', 'back-grid.png'))
+    background = pygame.image.load(os.path.join(ROOT_PATH, 'media', 'graphics', 'background', 'back-grid.png'))
     background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
     screen.blit(background, (0, 0))
 
