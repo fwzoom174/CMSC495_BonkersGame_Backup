@@ -2,6 +2,8 @@ import pygame
 import os
 import time
 import scenes.breakout as breakout
+from common import ROOT_PATH
+
 
 # Timer class for both stopwatch and countdown modes
 class Timer:
@@ -22,7 +24,7 @@ class Timer:
 
     # ---------- Font ----------
     def load_custom_font(self, size):
-        font_path = os.path.join('media', 'graphics', 'font', 'Pixeboy.ttf')
+        font_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'font', 'Pixeboy.ttf')
         return pygame.font.Font(font_path, size)
 
     # ---------- Controls ----------

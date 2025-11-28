@@ -1,13 +1,14 @@
 import pygame
 import os
-from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW
+from common import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW, ROOT_PATH
+
 
 def pause_overlay(snapshot):
     """Pause screen"""
     screen = pygame.display.get_surface()
 
     # Font setup
-    font_path = os.path.join(os.path.dirname(__file__), '..', 'media', 'graphics', 'font', 'Pixeboy.ttf')
+    font_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'font', 'Pixeboy.ttf')
     font_big = pygame.font.Font(font_path, 120)
     font_small = pygame.font.Font(font_path, 48)
 
