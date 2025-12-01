@@ -18,6 +18,7 @@
 import os
 import json
 import random
+import math
 
 # --- Third Party ---
 import pygame
@@ -34,7 +35,7 @@ from common import (
 from objects.block import Block
 from objects.scoreboard import ScoreBoard
 from objects.timer import Timer
-from objects.particle import Particle
+from objects.particle import Particle, ExplosionManager, Fireball
 from objects.coin import Coin
 from objects.powerup import PowerUp, BlueBlast
 
@@ -80,6 +81,14 @@ paddle_big_duration = 300
 balls = []
 ball_image = None
 
+# --- Fireball ---
+fireball_ready = False  
+current_fireball = None  
+targeted_brick = None  
+fireball_shoot_timer = 0
+fireball_shoot_delay = 30 
+
+
 # --- Debug + Tutorial ---
 debug_countdown_mode = False
 
@@ -121,6 +130,8 @@ wall_sound = None
 paddle_sound = None
 brick_sound = None
 lose_life_sound = None
+fireball_moving_sound = None
+fireball_explosion_sound = None
 
 paddle_image = None
 background = None
@@ -133,14 +144,14 @@ pygame.mixer.init()
 
 # --- Drop Rates ---
 DROP_TABLE = {
-    "coin": 0.30,
+    "coin": 0.25,
     "triple_ball": 0.15,
     "blast": 0.10,
+    "fireball": 0.15,
     "small_paddle": 0.05,
     "big_paddle": 0.10,
-    "nothing": 0.30
+    "nothing": 0.20
 }
-
 
 # ================= Game Setup =================
 
@@ -186,10 +197,9 @@ def init(character_image=None):
 
     load_assets()
 
-
 # --- Assets ---
 def load_assets():
-    global wall_sound, paddle_sound, brick_sound, lose_life_sound, coin_sound, blast_shoot_sound, paddle_image, background
+    global wall_sound, paddle_sound, brick_sound, lose_life_sound, coin_sound, blast_shoot_sound, fireball_moving_sound, fireball_explosion_sound, paddle_image, background
 
     try:
         wall_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_wall-hit.wav'))
@@ -198,6 +208,8 @@ def load_assets():
         lose_life_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_lose-lives.wav'))
         coin_sound = Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_collect_coin.ogg"))
         blast_shoot_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_blast_shoot.wav'))
+        fireball_moving_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_fireball.ogg'))
+        fireball_explosion_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_explosion.mp3'))
     except FileNotFoundError:
         print("Warning: Could not load sound files. Game will run without sound.")
 
@@ -305,6 +317,14 @@ def main_controller(screen, debug_mode="", character_image=None):
     coins = []
     powerups = []
     blasts = []
+    fireballs = []
+    explosion_manager = ExplosionManager()
+
+    # Fireball system
+    global fireball_ready, current_fireball, targeted_brick
+    fireball_ready = False
+    current_fireball = None
+    targeted_brick = None
 
     # Reset tutorial based on saved setting
     tutorial_active = cfg.get("tutorial_enabled", True)
@@ -320,8 +340,7 @@ def main_controller(screen, debug_mode="", character_image=None):
 
     running = True
     while running:
-        status = game_loop(screen, scoreboard, game_timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration)
-
+        status = game_loop(screen, scoreboard, game_timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration, explosion_manager)
 
         if status == "running":
             continue
@@ -359,10 +378,14 @@ def main_controller(screen, debug_mode="", character_image=None):
                     coins.clear()
                     powerups.clear()
                     blasts.clear()
+                    
 
                     # Reset active power-up states
                     blast_active = False
                     blast_timer = 0
+                    fireball_ready = False
+                    current_fireball = None
+                    targeted_brick = None
                     paddle_shrink_active = False
                     paddle_shrink_timer = 0
 
@@ -396,11 +419,12 @@ def main_controller(screen, debug_mode="", character_image=None):
 
 # ================= Core Game Loop =================
 
-def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration):
+def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration, explosion_manager):
     global ball_position, pause_requested, delta_time, blast_active, blast_timer
     global paddle_shrink_active, paddle_shrink_timer
     global paddle_big_active, paddle_big_timer
     global level_timer, ball_image
+    global fireball_ready, current_fireball, targeted_brick, fireball_shoot_timer
 
     walls = draw_wall(screen)
     bar = draw_bar(screen)
@@ -494,9 +518,14 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
             elif powerup.type == "big_paddle":
                 paddle_big_active = True
                 paddle_big_timer = paddle_big_duration
-                pass
+            elif powerup.type == "fireball":
+                fireball_ready = True
+                # Pick a random brick to target
+                if blocks:
+                    targeted_brick = random.choice(blocks)
             if coin_sound:
                 coin_sound.play()
+                
     # Auto-shoot blasts when active
     if blast_active and blast_timer > 0:
         blast_timer -= 1
@@ -514,11 +543,31 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
         if blast_timer <= 0:
             blast_active = False
 
-    # Handle paddle shrinking
-    if paddle_shrink_active and paddle_shrink_timer > 0:
-        paddle_shrink_timer -= 1
-    if paddle_shrink_active and paddle_shrink_timer <= 0:
-        paddle_shrink_active = False
+    # Auto-shoot fireballs when ready (similar to blast)
+    if fireball_ready:
+        fireball_shoot_timer += 1
+        
+        # Shoot a fireball every 30 frames (0.5 seconds)
+        if fireball_shoot_timer >= fireball_shoot_delay:
+            if blocks:
+                targeted_brick = random.choice(blocks)
+                current_fireball = Fireball(
+                    bar.centerx,
+                    bar.top - 20,
+                    targeted_brick.rect.centerx,
+                    targeted_brick.rect.centery
+                )
+                # Add to a list instead of single fireball
+                if not hasattr(game_loop, 'fireballs'):
+                    game_loop.fireballs = []
+                game_loop.fireballs.append(current_fireball)
+                
+                if fireball_moving_sound:
+                    fireball_moving_sound.play()
+            
+            fireball_shoot_timer = 0  # Reset timer
+    else:
+        fireball_shoot_timer = 0
 
     # Handle big paddle
     if paddle_big_active and paddle_big_timer > 0:
@@ -532,6 +581,14 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
         blast.draw(screen)
         if blast.is_off_screen():
             blasts.remove(blast)
+
+    # Update and draw fireballs
+    if hasattr(game_loop, 'fireballs'):
+        for fireball in game_loop.fireballs[:]:
+            fireball.update()
+            fireball.draw(screen)
+            if not fireball.active:
+                game_loop.fireballs.remove(fireball)
 
     # Check if blasts hit bricks
     for blast in blasts[:]:
@@ -561,6 +618,9 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
 
                     elif drop == "big_paddle":
                         powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "big_paddle"))
+                    
+                    elif drop == "fireball":
+                        powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "fireball"))
 
                     blocks.remove(block)
                     scoreboard.add_points(50)
@@ -570,6 +630,59 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
 
                 blasts.remove(blast)
                 break
+
+    # Check if fireballs hit bricks
+    if hasattr(game_loop, 'fireballs'):
+        for fireball in game_loop.fireballs[:]:
+            fireball_rect = fireball.get_rect()
+            for block in blocks[:]:
+                if block.rect.colliderect(fireball_rect):
+                    destroyed = block.hit()
+                    
+                    if destroyed:
+                        # Create EXPLOSION!
+                        explosion_manager.create_explosion(
+                            block.rect.centerx,
+                            block.rect.centery,
+                            block.color
+                        )
+                        
+                        # Play explosion sound
+                        if fireball_explosion_sound:
+                            fireball_explosion_sound.play()
+                            
+                        # Use drop table
+                        drop = choose_drop()
+                        
+                        if drop == "coin":
+                            coins.append(Coin(block.rect.centerx - 15, block.rect.centery))
+                        elif drop == "blast":
+                            powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "blast"))
+                        elif drop == "triple_ball":
+                            powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "triple_ball"))
+                        elif drop == "small_paddle":
+                            powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "small_paddle"))
+                        elif drop == "big_paddle":
+                            powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "big_paddle"))
+                        elif drop == "fireball":
+                            powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "fireball"))
+                        
+                        blocks.remove(block)
+                        scoreboard.add_points(50)
+                        
+                        if isinstance(brick_sound, Sound):
+                            brick_sound.play()
+                    
+                    # Fireball explodes on contact
+                    game_loop.fireballs.remove(fireball)
+                    break
+
+    # Update explosion particles
+    explosion_manager.update()
+
+    # Draw explosions (draw last so they appear on top)
+    explosion_manager.draw(screen)
+
 
     if len(blocks) == 0:
         if isinstance(game_timer, Timer):
@@ -696,11 +809,12 @@ def define_blocks(screen, level, wall_padding=WALL_PADDING):
     return blocks
 
 
-def reset_ball_and_paddle():
+def reset_ball_and_paddle(reset_fireball=True):
     global balls, bar_x
     global paddle_shrink_active, paddle_shrink_timer
     global paddle_big_active, paddle_big_timer
     global blast_active, blast_timer
+    global fireball_ready, current_fireball, targeted_brick,fireball_shoot_timer
 
     # Reset paddle powerups
     paddle_shrink_active = False
@@ -709,6 +823,12 @@ def reset_ball_and_paddle():
     paddle_big_timer = 0
     blast_active = False
     blast_timer = 0
+
+    # Reset fireball only if specified
+    if reset_fireball:
+        fireball_ready = False
+        targeted_brick = None
+        fireball_shoot_timer = 0
 
     # Reset paddle width animation
     draw_bar.width = original_paddle_width
@@ -727,7 +847,7 @@ def reset_ball_and_paddle():
 
 
 def handle_input(bar, main_ball):
-    global pause_requested, bar_x, tutorial_active
+    global pause_requested, bar_x, tutorial_active, fireball_ready, current_fireball, targeted_brick
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -795,6 +915,7 @@ def handle_input(bar, main_ball):
                         level_timer.resume()
 
                 return True
+        
 
     # -------- Paddle Movement --------
     keys = pygame.key.get_pressed()

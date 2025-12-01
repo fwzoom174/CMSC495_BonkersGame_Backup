@@ -10,7 +10,7 @@ class PowerUp:
         self.x = x
         self.y = y
         self.velocity_y = 4
-        self.type = powerup_type  # "blast", "small_paddle", "triple_ball"
+        self.type = powerup_type  # "blast", "small_paddle", "triple_ball", "big_paddle", "fireball"
 
         # Load power-up image
         self.image = None
@@ -23,6 +23,8 @@ class PowerUp:
                 img = pygame.image.load(os.path.join(ROOT_PATH, "media", "graphics", "Particles", "Tripleball.png"))
             elif powerup_type == "big_paddle":
                 img = pygame.image.load(os.path.join(ROOT_PATH, "media", "graphics", "Particles", "big paddle.png"))
+            elif powerup_type == "fireball":
+                img = pygame.image.load(os.path.join(ROOT_PATH, "media", "graphics", "Particles", "fireball.png"))
             self.image = pygame.transform.scale(img, (self.width, self.height))
 
         except Exception as e:
@@ -31,7 +33,8 @@ class PowerUp:
                 "blast": (0, 150, 255),
                 "small_paddle": (255, 165, 0),
                 "triple_ball": (0, 255, 0),
-                "big_paddle": (255, 0, 200)
+                "big_paddle": (255, 0, 200),
+                "fireball": (255, 100, 0)
             }.get(powerup_type, (0, 100, 255))
 
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)

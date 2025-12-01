@@ -332,8 +332,8 @@ def main_menu():
 
 
 def open_settings_menu(screen):
-    font = pygame.font.Font(None, 70)
-    small = pygame.font.Font(None, 40)
+    font = pygame.font.Font("media/graphics/font/Pixeboy.ttf", 70)
+    small = pygame.font.Font("media/graphics/font/Pixeboy.ttf", 40)
 
     running = True
 
@@ -355,10 +355,10 @@ def open_settings_menu(screen):
         json.dump(config, f, indent=2)
 
     # ---- COLUMN LAYOUT ----
-    col_label_x = SCREEN_WIDTH // 2 - 310
-    col_state_x = SCREEN_WIDTH // 2 - 50
-    col_checkbox_x = SCREEN_WIDTH // 2 + 50
-    col_note_x = SCREEN_WIDTH // 2 + 120
+    col_label_x = SCREEN_WIDTH // 2 - 340
+    col_state_x = SCREEN_WIDTH // 2 - 30
+    col_checkbox_x = SCREEN_WIDTH // 2 + 80
+    col_note_x = SCREEN_WIDTH // 2 + 150
 
     start_y = 240
     spacing = 55
@@ -486,8 +486,8 @@ def show_how_to_play(screen):
 
 # ---------- CREDITS ----------
 def show_credits(screen):
-    font = pygame.font.Font(None, 60)
-    small = pygame.font.Font(None, 40)
+    font = pygame.font.Font("media/graphics/font/Pixeboy.ttf", 55)
+    small = pygame.font.Font("media/graphics/font/Pixeboy.ttf", 30)
 
     running = True
     while running:
@@ -508,30 +508,25 @@ def show_credits(screen):
 
         names = [
             "Program Manager / Team Lead:",
-            "• Christopher Lehn",
-
-            "Gameplay Developer – Dustyn Hermann",
-            "Core Systems Developer – Joshua Marshall",
-
-            "UI/UX & Art–Audio Designer:",
-            "• Venus Gilyard",
-
+            "Christopher Lehn",
+            "Gameplay Developer - Dustyn Hermann",
+            "Core Systems Developer - Joshua Marshall",
+            "UI/UX & Art-Audio Designer:",
+            "Venus Gilyard",
             "Documentation & Quality Tester:",
-            "• Manuel Delgado",
-
+            "Manuel Delgado",
             "---------------------------------------------",
             "Special Thanks:",
-            "• Everyone who tested the game",
+            "Everyone who tested the game",
             "---------------------------------------------",
-
             "Course Acknowledgments:",
-            "• University of Maryland Global Campus (UMGC)",
-            "• Professor Jeff Sanford – Primary Instructor, CMSC 495",
-            "   Thank you for your guidance and support!"
+            "University of Maryland Global Campus (UMGC)",
+            "Professor Jeff Sanford - Primary Instructor, CMSC 495",
+            " Thank you for your guidance and support!"
         ]
 
         y = start_y
-        spacing = 45
+        spacing = 42
 
         for line in names:
             txt = small.render(line, True, WHITE)
