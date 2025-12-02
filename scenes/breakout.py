@@ -69,16 +69,13 @@ blast_active = False
 blast_timer = 0
 blast_duration = 300
 
-paddle_shrink_active = False
-paddle_shrink_timer = 0
-paddle_shrink_duration = 300
-
-paddle_big_active = False
-paddle_big_timer = 0
-paddle_big_duration = 300
+paddle_state = "normal"
+paddle_state_timer = 0
+paddle_power_duration = 300
 
 balls = []
 ball_image = None
+last_hit_ball = None
 
 # --- Debug + Tutorial ---
 debug_countdown_mode = False
@@ -87,16 +84,17 @@ debug_countdown_mode = False
 config_path = "config.json"
 
 if os.path.exists(config_path):
-    with open(config_path, "r") as f:
-        cfg = json.load(f)
-
-    # ensure key exists
-    cfg.setdefault("tutorial_enabled", True)
-
+    try:
+        with open(config_path, "r") as f:
+            cfg = json.load(f)
+    except:
+        cfg = {}
 else:
-    cfg = {"tutorial_enabled": True}
-    with open(config_path, "w") as f:
-        json.dump(cfg, f, indent=2)
+    cfg = {}
+
+cfg.setdefault("sound_volume", 5)
+cfg.setdefault("music_volume", 5)
+cfg.setdefault("tutorial_enabled", True)
 
 # Tutorial state
 tutorial_active = cfg["tutorial_enabled"]
@@ -121,8 +119,12 @@ wall_sound = None
 paddle_sound = None
 brick_sound = None
 lose_life_sound = None
+coin_sound = None
+blast_shoot_sound = None
+pause_sound = None
+unpause_sound = None
 
-paddle_image = None
+paddle_image: pygame.Surface | None = None
 background = None
 
 bar_x = 0
@@ -131,14 +133,25 @@ speed = 0
 
 pygame.mixer.init()
 
+# --- Central Volume Reader ---
+def current_volume():
+    """Always read fresh sound volume (0.0 – 1.0) from config.json."""
+    try:
+        with open("config.json","r") as f:
+            c = json.load(f)
+            val = c.get("sound_volume", 5)
+            return max(0, min(5, val)) / 5.0
+    except:
+        return 1.0
+
 # --- Drop Rates ---
 DROP_TABLE = {
     "coin": 0.30,
-    "triple_ball": 0.15,
+    "triple_ball": 0.10,
     "blast": 0.10,
     "small_paddle": 0.05,
     "big_paddle": 0.10,
-    "nothing": 0.30
+    "nothing": 0.35
 }
 
 
@@ -149,7 +162,6 @@ def init(character_image=None):
     global bar_x, bar_y, speed, ball_radius, ball_position, \
         ball_velocity, ball_max_velocity_x, clock, delta_time, pause_requested, win, balls, font
 
-    # Initialize font (must be after pygame.init())
     font = pygame.font.Font(pixel_font_path, 36)
 
     # Reset ball list every new game
@@ -161,7 +173,6 @@ def init(character_image=None):
 
     ball_radius = 10
 
-    
     # Load selected character image
     global ball_image
     if character_image:
@@ -186,35 +197,117 @@ def init(character_image=None):
 
     load_assets()
 
+# ---------- Volume Helper ----------
+def apply_sound_volumes():
+    global cfg
+
+    try:
+        with open(config_path, "r") as f:
+            cfg = json.load(f)
+    except:
+        cfg = {"sound_volume": 5}
+    try:
+        level = int(cfg.get("sound_volume", 5))
+    except:
+        level = 5
+
+    level = max(0, min(5, level))
+    vol = level / 5.0
+
+    try:
+        if isinstance(wall_sound, Sound):
+            wall_sound.set_volume(vol)
+        if isinstance(paddle_sound, Sound):
+            paddle_sound.set_volume(vol)
+        if isinstance(brick_sound, Sound):
+            brick_sound.set_volume(vol)
+        if isinstance(lose_life_sound, Sound):
+            lose_life_sound.set_volume(vol)
+        if isinstance(coin_sound, Sound):
+            coin_sound.set_volume(vol)
+        if isinstance(blast_shoot_sound, Sound):
+            blast_shoot_sound.set_volume(vol)
+        if isinstance(pause_sound, Sound):
+            pause_sound.set_volume(vol)
+        if isinstance(unpause_sound, Sound):
+            unpause_sound.set_volume(vol)
+    except:
+        pass
 
 # --- Assets ---
 def load_assets():
-    global wall_sound, paddle_sound, brick_sound, lose_life_sound, coin_sound, blast_shoot_sound, paddle_image, background
+    global wall_sound, paddle_sound, brick_sound, lose_life_sound
+    global coin_sound, blast_shoot_sound, pause_sound, unpause_sound
+    global paddle_image, background
+
+    vol = current_volume()  # always read fresh volume
 
     try:
-        wall_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_wall-hit.wav'))
-        paddle_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_paddle-hit.wav'))
-        brick_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_brick-hit.ogg'))
-        lose_life_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_lose-lives.wav'))
-        coin_sound = Sound(os.path.join(ROOT_PATH, "media", "audio", "media_audio_collect_coin.ogg"))
-        blast_shoot_sound = pygame.mixer.Sound(os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_blast_shoot.wav'))
+        wall_sound = pygame.mixer.Sound(
+            os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_wall-hit.wav')
+        )
+        wall_sound.set_volume(vol)
+
+        paddle_sound = pygame.mixer.Sound(
+            os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_paddle-hit.wav')
+        )
+        paddle_sound.set_volume(vol)
+
+        brick_sound = pygame.mixer.Sound(
+            os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_brick-hit.ogg')
+        )
+        brick_sound.set_volume(vol)
+
+        lose_life_sound = pygame.mixer.Sound(
+            os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_lose-lives.wav')
+        )
+        lose_life_sound.set_volume(vol)
+
+        coin_sound = Sound(
+            os.path.join(ROOT_PATH, "media", "audio", "media_audio_collect_coin.ogg")
+        )
+        coin_sound.set_volume(vol)
+
+        blast_shoot_sound = pygame.mixer.Sound(
+            os.path.join(ROOT_PATH, 'media', 'audio', 'media_audio_blast_shoot.wav')
+        )
+        blast_shoot_sound.set_volume(vol)
+
+        pause_sound = pygame.mixer.Sound(
+            os.path.join(ROOT_PATH, "media", "audio", "pause.wav")
+        )
+        pause_sound.set_volume(vol)
+
+        unpause_sound = pygame.mixer.Sound(
+            os.path.join(ROOT_PATH, "media", "audio", "unpause.wav")
+        )
+        unpause_sound.set_volume(vol)
+
     except FileNotFoundError:
-        print("Warning: Could not load sound files. Game will run without sound.")
+        print("Warning: Could not load one or more audio files.")
 
+    # Load paddle image
     try:
-        paddle_image = pygame.image.load(os.path.join(ROOT_PATH, 'media', 'graphics', 'paddle', 'paddle.png'))
+        paddle_image = pygame.image.load(
+            os.path.join(ROOT_PATH, 'media', 'graphics', 'paddle', 'paddle.png')
+        ).convert_alpha()
         paddle_image = pygame.transform.scale(paddle_image, (BAR_WIDTH, BAR_HEIGHT))
     except FileNotFoundError:
         print("Warning: Could not load paddle image")
+        paddle_image = pygame.Surface((BAR_WIDTH, BAR_HEIGHT))
+        paddle_image.fill((255, 255, 255))
 
+    # Load background
     try:
         background = pygame.image.load(
-            os.path.join(ROOT_PATH, 'media', 'graphics', 'background', 'back-black-wall-border.png'))
+            os.path.join(ROOT_PATH, 'media', 'graphics', 'background', 'back-black-wall-border.png')
+        )
         background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
     except FileNotFoundError:
-        print("Warning: Could not load background image. Using black background.")
+        background = None
+        print("Warning: Could not load background. Using plain black.")
 
-
+    apply_sound_volumes()
 # ================= Game Flow =================
 
 # --- Public Entry Point ---
@@ -224,13 +317,14 @@ def play(screen, debug_mode="", character_image=None):
 
 # --- Main Controller ---
 def main_controller(screen, debug_mode="", character_image=None):
-    global game_timer, level_timer
+    global tutorial_active, tutorial_timer, tutorial_phase, cfg, game_timer, level_timer
+    global paddle_state, paddle_state_timer
 
     init(character_image)
-    pygame.mouse.set_visible(False)
 
-    # ---- Reset tutorial state each time a new game starts ----
-    global tutorial_active, tutorial_timer, tutorial_phase, cfg
+    # ---- Mouse visibility based on setting ----
+    mouse_on = cfg.get("mouse_enabled", False)
+    pygame.mouse.set_visible(mouse_on)
 
     tutorial_timer = 0
     tutorial_phase = "move"
@@ -263,7 +357,9 @@ def main_controller(screen, debug_mode="", character_image=None):
 
     # Turn on FPS when entering a debug mode game
     global show_fps
-    show_fps = debug_mode is not False
+
+    # show FPS if debug OR user enabled it
+    show_fps = debug_mode is not False or cfg.get("show_fps", False)
 
     global debug_countdown_mode
 
@@ -307,20 +403,23 @@ def main_controller(screen, debug_mode="", character_image=None):
     blasts = []
 
     # Reset tutorial based on saved setting
-    tutorial_active = cfg.get("tutorial_enabled", True)
+    if debug_mode:
+        tutorial_active = False
+    else:
+        tutorial_active = cfg.get("tutorial_enabled", True)
     tutorial_timer = 0
     tutorial_phase = "move"
 
     # Reset power-ups at start of game
-    global blast_active, blast_timer, paddle_shrink_active, paddle_shrink_timer
+    global blast_active, blast_timer, paddle_state, paddle_state_timer
     blast_active = False
     blast_timer = 0
-    paddle_shrink_active = False
-    paddle_shrink_timer = 0
+    paddle_state = "normal"
+    paddle_state_timer = 0
 
     running = True
     while running:
-        status = game_loop(screen, scoreboard, game_timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration)
+        status = game_loop(screen, scoreboard, game_timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration, cfg)
 
 
         if status == "running":
@@ -332,7 +431,14 @@ def main_controller(screen, debug_mode="", character_image=None):
         elif status == "game_over":
             running = False
 
+
         elif status == "level_complete":
+
+            # Stop Boss Music
+            from common import boss_music, gameplay_music
+            if level == 5:
+                boss_music.stop()
+
             # For one_block debug, treat level clear as a simple win and exit
             if debug_mode == "one_block":
                 if isinstance(game_timer, Timer):
@@ -363,10 +469,9 @@ def main_controller(screen, debug_mode="", character_image=None):
                     # Reset active power-up states
                     blast_active = False
                     blast_timer = 0
-                    paddle_shrink_active = False
-                    paddle_shrink_timer = 0
+                    paddle_state = "normal"
+                    paddle_state_timer = 0
 
-                    # Force paddle full size and recenter after level transition
                     draw_bar.width = original_paddle_width
                     draw_bar.stored_width = original_paddle_width
                     bar_x = (SCREEN_WIDTH - original_paddle_width) // 2
@@ -386,6 +491,13 @@ def main_controller(screen, debug_mode="", character_image=None):
                     if level == 5:
                         show_boss_intro(screen)
 
+                        #Boss Music Start
+                        from common import menu_music, gameplay_music, boss_music, apply_music_volume
+                        gameplay_music.stop()
+                        menu_music.stop()
+                        boss_music.play(loops=-1)
+                        apply_music_volume(cfg.get("music_volume", 5))
+
     replay = False
     if win is not None:
         replay, initials = end_screen(screen, win, scoreboard.score)
@@ -396,11 +508,12 @@ def main_controller(screen, debug_mode="", character_image=None):
 
 # ================= Core Game Loop =================
 
-def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration):
+def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration, cfg):
     global ball_position, pause_requested, delta_time, blast_active, blast_timer
-    global paddle_shrink_active, paddle_shrink_timer
-    global paddle_big_active, paddle_big_timer
     global level_timer, ball_image
+    global paddle_state, paddle_state_timer
+
+    show_fps = (debug_mode is not False) or cfg.get("show_fps", False)
 
     walls = draw_wall(screen)
     bar = draw_bar(screen)
@@ -468,7 +581,7 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
         if coin.rect.bottom >= bar.top and coin.rect.colliderect(bar):
             scoreboard.add_points(50)
             coins.remove(coin)
-            if coin_sound:
+            if isinstance(coin_sound, Sound):
                 coin_sound.play()
 
     # Update and draw powerups
@@ -487,16 +600,17 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
                 blast_active = True
                 blast_timer = blast_duration
             elif powerup.type == "small_paddle":
-                paddle_shrink_active = True
-                paddle_shrink_timer = paddle_shrink_duration
+                paddle_state = "small"
+                paddle_state_timer = paddle_power_duration
             elif powerup.type == "triple_ball":
                 spawn_triple_ball()
             elif powerup.type == "big_paddle":
-                paddle_big_active = True
-                paddle_big_timer = paddle_big_duration
+                paddle_state = "big"
+                paddle_state_timer = paddle_power_duration
                 pass
             if coin_sound:
                 coin_sound.play()
+
     # Auto-shoot blasts when active
     if blast_active and blast_timer > 0:
         blast_timer -= 1
@@ -507,24 +621,17 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, par
                 blasts.append(BlueBlast(bar.left + 2, bar.top - 20))  # Left
             else:
                 blasts.append(BlueBlast(bar.right - 22, bar.top - 20))  # Right
-            if blast_shoot_sound:
+            if isinstance(blast_shoot_sound, Sound):
                 blast_shoot_sound.play()
 
         # Deactivate when timer runs out
         if blast_timer <= 0:
             blast_active = False
 
-    # Handle paddle shrinking
-    if paddle_shrink_active and paddle_shrink_timer > 0:
-        paddle_shrink_timer -= 1
-    if paddle_shrink_active and paddle_shrink_timer <= 0:
-        paddle_shrink_active = False
-
-    # Handle big paddle
-    if paddle_big_active and paddle_big_timer > 0:
-        paddle_big_timer -= 1
-    if paddle_big_active and paddle_big_timer <= 0:
-        paddle_big_active = False
+    if paddle_state != "normal":
+        paddle_state_timer -= 1
+        if paddle_state_timer <= 0:
+            paddle_state = "normal"
 
     # Update and draw blasts
     for blast in blasts[:]:
@@ -697,27 +804,22 @@ def define_blocks(screen, level, wall_padding=WALL_PADDING):
 
 
 def reset_ball_and_paddle():
-    global balls, bar_x
-    global paddle_shrink_active, paddle_shrink_timer
-    global paddle_big_active, paddle_big_timer
+    global balls, bar_x, paddle_state, paddle_state_timer
     global blast_active, blast_timer
 
-    # Reset paddle powerups
-    paddle_shrink_active = False
-    paddle_shrink_timer = 0
-    paddle_big_active = False
-    paddle_big_timer = 0
+    global last_hit_ball
+    last_hit_ball = None
+
+    paddle_state = "normal"
+    paddle_state_timer = 0
     blast_active = False
     blast_timer = 0
 
-    # Reset paddle width animation
     draw_bar.width = original_paddle_width
     draw_bar.stored_width = original_paddle_width
 
-    # Reset paddle to center
     bar_x = (SCREEN_WIDTH - original_paddle_width) // 2
 
-    # ---- Reset BALLS the correct way ----
     balls = [
         {
             "pos": pygame.Vector2(SCREEN_WIDTH // 2, bar_y - ball_radius - 4),
@@ -729,27 +831,30 @@ def reset_ball_and_paddle():
 def handle_input(bar, main_ball):
     global pause_requested, bar_x, tutorial_active
 
+    mouse_enabled = cfg.get("mouse_enabled", False)
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             return False
 
+        # ---------- KEYBOARD ----------
         if event.type == pygame.KEYDOWN:
 
-            # -------- Always Allow Pause (tutorial or normal) --------
+            # Pause
             if event.key == pygame.K_ESCAPE:
+                if isinstance(pause_sound, Sound):
+                    pause_sound.set_volume(current_volume())
+                    pause_sound.play()
                 pause_requested = True
                 return True
 
-            # -------- Tutorial Controls --------
+            # Tutorial: SPACE ends tutorial and launches
             if tutorial_active and event.key == pygame.K_SPACE:
-
                 tutorial_active = False
 
-                # Launch ball
                 balls[0]["vel"].x = get_x_angle(bar, balls[0])
                 balls[0]["vel"].y = -5
 
-                # Resume timers
                 if isinstance(game_timer, Timer):
                     if game_timer.start_time is None:
                         game_timer.start()
@@ -764,24 +869,20 @@ def handle_input(bar, main_ball):
 
                 return True
 
-            # -------- Normal Launch --------
-            if event.key == pygame.K_SPACE and main_ball["vel"].length() == 0:
-
-                # center ball if aligned close enough
+            # Normal launch with SPACE (no tutorial)
+            if event.key == pygame.K_SPACE and main_ball["vel"].length() == 0 and not tutorial_active:
                 bar_center = bar.centerx
                 ball_center = main_ball["pos"].x
 
                 if abs(ball_center - bar_center) < 3:
                     main_ball["pos"].x = bar_center
 
-                # apply bounce angle
                 main_ball["vel"].x = get_x_angle(bar, main_ball)
                 if abs(main_ball["vel"].x) < 0.5:
                     main_ball["vel"].x = 0
 
                 main_ball["vel"].y = -6
 
-                # start or resume timers
                 if isinstance(game_timer, Timer):
                     if game_timer.start_time is None:
                         game_timer.start()
@@ -796,13 +897,65 @@ def handle_input(bar, main_ball):
 
                 return True
 
-    # -------- Paddle Movement --------
-    keys = pygame.key.get_pressed()
-    paddle_width = small_paddle_width if paddle_shrink_active else BAR_WIDTH
+        # ---------- MOUSE CLICK LAUNCH ----------
+        if mouse_enabled and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 
+            # Tutorial: left click ends tutorial and launches
+            if tutorial_active:
+                tutorial_active = False
+
+                balls[0]["vel"].x = get_x_angle(bar, balls[0])
+                balls[0]["vel"].y = -5
+
+                if isinstance(game_timer, Timer):
+                    if game_timer.start_time is None:
+                        game_timer.start()
+                    else:
+                        game_timer.resume()
+
+                if isinstance(level_timer, Timer):
+                    if level_timer.start_time is None:
+                        level_timer.start()
+                    else:
+                        level_timer.resume()
+
+                return True
+
+            # Normal launch with click (no tutorial)
+            if main_ball["vel"].length() == 0:
+                bar_center = bar.centerx
+                ball_center = main_ball["pos"].x
+
+                if abs(ball_center - bar_center) < 3:
+                    main_ball["pos"].x = bar_center
+
+                main_ball["vel"].x = get_x_angle(bar, main_ball)
+                if abs(main_ball["vel"].x) < 0.5:
+                    main_ball["vel"].x = 0
+
+                main_ball["vel"].y = -6
+
+                if isinstance(game_timer, Timer):
+                    if game_timer.start_time is None:
+                        game_timer.start()
+                    else:
+                        game_timer.resume()
+
+                if isinstance(level_timer, Timer):
+                    if level_timer.start_time is None:
+                        level_timer.start()
+                    else:
+                        level_timer.resume()
+
+                return True
+
+    # ---------- PADDLE MOVEMENT ----------
+    keys = pygame.key.get_pressed()
+    paddle_width = int(getattr(draw_bar, "width", BAR_WIDTH))
+
+    # Keyboard BEFORE launch
     if main_ball["vel"].length() == 0:
         ball_x = main_ball["pos"].x
-
         left_limit = int(ball_x - (paddle_width - ball_radius * 2))
         right_limit = int(ball_x - ball_radius * 2)
 
@@ -811,17 +964,49 @@ def handle_input(bar, main_ball):
 
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             bar_x = min(bar_x + speed, right_limit)
+
+    # Keyboard AFTER launch
     else:
         edge_adjust = 8
+        current_width = int(getattr(draw_bar, "width", BAR_WIDTH))
 
         min_x = WALL_PADDING - edge_adjust
-        max_x = SCREEN_WIDTH - WALL_PADDING - paddle_width + edge_adjust
+        max_x = SCREEN_WIDTH - WALL_PADDING - current_width + edge_adjust
 
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             bar_x = max(bar_x - speed, min_x)
 
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             bar_x = min(bar_x + speed, max_x)
+
+    # ---------- MOUSE MOVEMENT (both states) ----------
+    if mouse_enabled:
+        mx = pygame.mouse.get_pos()[0]
+        target_x = mx - (paddle_width // 2)
+
+        current_width = int(getattr(draw_bar, "width", BAR_WIDTH))
+
+        if main_ball["vel"].length() == 0:
+            # Pre-launch limits
+            ball_x = main_ball["pos"].x
+            left_limit = int(ball_x - (paddle_width - ball_radius * 2))
+            right_limit = int(ball_x - ball_radius * 2)
+            target_x = max(left_limit, min(target_x, right_limit))
+        else:
+            # Wall limits
+            target_x = max(
+                WALL_PADDING,
+                min(target_x, SCREEN_WIDTH - WALL_PADDING - current_width)
+            )
+
+        screen_distance = (SCREEN_WIDTH - WALL_PADDING * 2 - paddle_width)
+        frames_needed = 120
+        max_step = screen_distance / frames_needed
+
+        if bar_x < target_x:
+            bar_x = min(bar_x + max_step, target_x)
+        elif bar_x > target_x:
+            bar_x = max(bar_x - max_step, target_x)
 
     return True
 
@@ -875,12 +1060,13 @@ def wall_check_multi(ball, walls):
         ball["pos"].y = walls.top + ball_radius
         hit_wall = True
 
-    if hit_wall and wall_sound:
+    if hit_wall and isinstance(wall_sound, Sound):
         wall_sound.play()
-
 
 # ---------- Paddle Collision ----------
 def paddle_check_multi(ball, bar):
+    global last_hit_ball
+
     ball_rect = pygame.Rect(
         ball["pos"].x - ball_radius,
         ball["pos"].y - ball_radius,
@@ -899,6 +1085,8 @@ def paddle_check_multi(ball, bar):
 
         if isinstance(paddle_sound, Sound):
             paddle_sound.play()
+
+        last_hit_ball = ball
 
 
 def get_x_angle(bar, ball_dict):
@@ -987,16 +1175,29 @@ def choose_drop():
 # ================= Powerups =================
 
 def spawn_triple_ball():
-    global balls
+    global balls, last_hit_ball
 
     if len(balls) == 0:
         return
 
-    base = balls[0]
+    if last_hit_ball in balls:
+        base = last_hit_ball
+    else:
+        base = balls[0]
+
     new_velocity = abs(base["vel"].x or 3)
 
-    balls.append({"pos": base["pos"].copy(), "vel": pygame.Vector2(-new_velocity, -5)})
-    balls.append({"pos": base["pos"].copy(), "vel": pygame.Vector2(new_velocity, -5)})
+    # --- Triple Ball Offsets ---
+    left_pos = base["pos"].copy()
+    right_pos = base["pos"].copy()
+
+    left_pos.x -= 25
+    right_pos.x += 25
+
+    balls.append({"pos": left_pos,
+                  "vel": pygame.Vector2(-new_velocity, -5)})
+    balls.append({"pos": right_pos,
+                  "vel": pygame.Vector2(new_velocity, -5)})
 
 
 # ================= UI & Drawing =================
@@ -1020,11 +1221,11 @@ def draw_wall(screen):
 
 # ---------- Draw Paddle ----------
 def draw_bar(screen):
-    global bar_x, paddle_shrink_active
+    global bar_x, paddle_state
 
-    if paddle_shrink_active:
+    if paddle_state == "small":
         target_width = small_paddle_width
-    elif paddle_big_active:
+    elif paddle_state == "big":
         target_width = big_paddle_width
     else:
         target_width = original_paddle_width
@@ -1042,8 +1243,22 @@ def draw_bar(screen):
     bar = pygame.Rect(bar_x, bar_y, current_width, BAR_HEIGHT)
     image_y_offset = -11
 
-    if paddle_image:
-        scaled_paddle = pygame.transform.scale(paddle_image, (int(current_width), BAR_HEIGHT))
+    # --- Paddle Image Selection ---
+    state = paddle_state
+
+    if paddle_state in ("small", "big") and paddle_image:
+        tinted = paddle_image.copy()
+        tinted.fill((0, 0, 0), special_flags=pygame.BLEND_RGB_MULT)
+        if paddle_state == "small":
+            tinted.fill((255, 40, 40), special_flags=pygame.BLEND_RGB_ADD)
+        else:
+            tinted.fill((40, 140, 255), special_flags=pygame.BLEND_RGB_ADD)
+        current_img = tinted
+    else:
+        current_img = paddle_image
+
+    if current_img:
+        scaled_paddle = pygame.transform.scale(current_img, (int(current_width), BAR_HEIGHT))
         screen.blit(scaled_paddle, (bar_x, bar_y + image_y_offset))
     else:
         pygame.draw.rect(screen, RED, bar)
@@ -1080,9 +1295,8 @@ def show_tutorial_phase(screen, phase):
     esc_img = pygame.transform.scale(esc_img, (140, 140))
     space_img = pygame.transform.scale(space_img, (260, 80))
 
-    font_path = os.path.join(ROOT_PATH, "media", "graphics", "font", "Pixeboy.ttf")
-    font = pygame.font.Font(font_path, 42)
-    label_font = pygame.font.Font(font_path, 28)
+    font = pygame.font.Font(pixel_font_path, 42)
+    label_font = pygame.font.Font(pixel_font_path, 28)
 
     if phase == "move":
         arrow_pos = (SCREEN_WIDTH // 2 - 180, 290)
@@ -1120,9 +1334,8 @@ def show_level_complete(screen, level):
 
 
 def show_boss_intro(screen):
-    font_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'font', 'Pixeboy.ttf')
-    big_font = pygame.font.Font(font_path, 76)
-    small_font = pygame.font.Font(font_path, 36)
+    big_font = pygame.font.Font(pixel_font_path, 76)
+    small_font = pygame.font.Font(pixel_font_path, 36)
 
     lines = [
         "FINAL LEVEL!",
@@ -1155,8 +1368,7 @@ def show_boss_intro(screen):
 def update_scoreboard(screen, scoreboard, timer, blasts, coins, powerups):
     global ball_position, ball_velocity, bar_x
     global blast_active, blast_timer
-    global paddle_shrink_active, paddle_shrink_timer
-    global paddle_big_active, paddle_big_timer
+    global paddle_state, paddle_state_timer
 
     scoreboard.lose_life()
     if isinstance(lose_life_sound, Sound):
@@ -1168,15 +1380,15 @@ def update_scoreboard(screen, scoreboard, timer, blasts, coins, powerups):
         level_timer.pause()
 
     if scoreboard.lives > 0:
+        global last_hit_ball
+        last_hit_ball = None
+
         reset_ball_and_paddle()
 
-        # Reset power-ups when losing a life
         blast_active = False
         blast_timer = 0
-        paddle_shrink_active = False
-        paddle_shrink_timer = 0
-        paddle_big_active = False
-        paddle_big_timer = 0
+        paddle_state = "normal"
+        paddle_state_timer = 0
 
         # Clear all falling items
         blasts.clear()
@@ -1206,7 +1418,6 @@ def set_win(state=True):
 
 def pause_game(screen):
     global pause_requested
-    # --- Update active timers ---
     if isinstance(game_timer, Timer):
         game_timer.update()
     if isinstance(level_timer, Timer):
@@ -1217,5 +1428,9 @@ def pause_game(screen):
     if choice == "menu":
         pygame.mouse.set_visible(True)
         return False
-    elif choice == "resume":
-         return True 
+
+    if choice == "resume":
+        if isinstance(unpause_sound, Sound):
+            unpause_sound.set_volume(current_volume())
+            unpause_sound.play()
+        return True

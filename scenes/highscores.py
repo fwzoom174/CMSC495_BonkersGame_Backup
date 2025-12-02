@@ -1,6 +1,7 @@
 import pygame
 import os
 import sys
+import json
 from common import SCREEN_WIDTH, SCREEN_HEIGHT, YELLOW, ROOT_PATH
 from scenes.win_lose import draw_retro_background
 from datetime import datetime, timezone, timedelta
@@ -9,7 +10,8 @@ from datetime import datetime, timezone, timedelta
 pygame.font.init()
 
 # Initialize the mixer for sound
-pygame.mixer.init()
+if not pygame.mixer.get_init():
+    pygame.mixer.init()
 
 # ---------- SOUND LOADING ----------
 # Load sound effects
@@ -19,6 +21,22 @@ try:
 except:
     print("Warning: Could not load menu click sound.")
     menu_click_sound = None
+
+config_path = "config.json"
+
+def current_sfx_volume():
+    try:
+        with open(config_path, "r") as f:
+            cfg_local = json.load(f)
+        level = cfg_local.get("sound_volume", 5)
+        try:
+            level = int(level)
+        except:
+            level = 5
+        level = max(0, min(5, level))
+        return level / 5.0
+    except:
+        return 1.0
 
 # ---------- FONT UTILITIES ----------
 def load_custom_font(size):
@@ -149,13 +167,15 @@ def show_high_scores(screen):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                if menu_click_sound:
-                        menu_click_sound.play()
+                if menu_click_sound and current_sfx_volume() > 0:
+                    menu_click_sound.set_volume(current_sfx_volume())
+                    menu_click_sound.play()
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if menu_click_sound:
-                        menu_click_sound.play()
+                if menu_click_sound and current_sfx_volume() > 0:
+                    menu_click_sound.set_volume(current_sfx_volume())
+                    menu_click_sound.play()
                 running = False
 
         pygame.display.flip()
