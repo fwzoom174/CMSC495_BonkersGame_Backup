@@ -19,7 +19,7 @@ class Coin:
 
         self.width = 20
         self.height = 20
-        self.velocity_y = 5
+        self.velocity_y = 4
 
         # Rectangle used for collision checks
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
