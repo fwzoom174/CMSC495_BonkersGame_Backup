@@ -1,3 +1,13 @@
+"""
+Main menu and launcher for the Breakout game.
+
+This file:
+1. Initializes pygame and audio.
+2. Loads and saves config settings.
+3. Shows the main menu, settings, how to play, credits, and test mode.
+4. Starts the main Breakout game with normal and debug options.
+"""
+
 import sys
 import pygame
 import common
@@ -19,7 +29,8 @@ except:
     menu_click_sound = None
 
 try:
-    menu_background = pygame.image.load(os.path.join(ROOT_PATH, "media", "graphics", "background", "back-landscape-grid.png"))
+    menu_background = pygame.image.load(
+        os.path.join(ROOT_PATH, "media", "graphics", "background", "back-landscape-grid.png"))
 except:
     print("Warning: Could not load background image.")
     menu_background = None
@@ -27,12 +38,14 @@ except:
 # ---- Load or create config ----
 config_path = "config.json"
 
+
 def save_config():
     try:
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
     except:
         print("Warning: Could not save config.json")
+
 
 def current_sfx_volume():
     try:
@@ -47,6 +60,8 @@ def current_sfx_volume():
         return level / 5.0
     except:
         return 1.0
+
+
 if os.path.exists(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
@@ -84,7 +99,6 @@ characters = [
 ]
 
 
-
 # ---------- MAIN MENU ----------
 def main_menu():
     pygame.mouse.set_visible(True)
@@ -110,7 +124,7 @@ def main_menu():
         settings_button_img = pygame.image.load("media/graphics/items/settings-button.png")
         credits_button_img = pygame.image.load("media/graphics/items/credits-button.png")
         quit_button_img = pygame.image.load("media/graphics/items/quit-button.png")
-        
+
         # Scale buttons to consistent size (adjust if needed)
         button_width = 300
         button_height = 60
@@ -139,13 +153,13 @@ def main_menu():
     button_x = 190
     button_start_y = 300
     button_spacing = 80
-    
+
     play_rect = pygame.Rect(button_x, button_start_y, 300, 60)
     high_rect = pygame.Rect(button_x, button_start_y + button_spacing, 300, 60)
     settings_rect = pygame.Rect(button_x, button_start_y + button_spacing * 2, 300, 60)
     credits_rect = pygame.Rect(button_x, button_start_y + button_spacing * 3, 300, 60)
     quit_rect = pygame.Rect(button_x, button_start_y + button_spacing * 4, 300, 60)
-    
+
     selected_character = config.get("last_character", 0)
 
     character_images = []
@@ -157,7 +171,7 @@ def main_menu():
         except Exception as e:
             print(f"Warning: Could not load {char['name']}: {e}")
             character_images.append(None)
-    
+
     try:
         select_player_img = pygame.image.load("media/graphics/items/select-player.png")
         select_player_img = pygame.transform.scale(select_player_img, (300, 60))
@@ -171,21 +185,20 @@ def main_menu():
         left_arrow_dark = pygame.image.load("media/graphics/items/left-arrow-dark.png")
         right_arrow = pygame.image.load("media/graphics/items/right-arrow.png")
         right_arrow_dark = pygame.image.load("media/graphics/items/right-arrow-dark.png")
-        
+
         # Scale light arrows
         arrow_size = (40, 40)
         left_arrow = pygame.transform.scale(left_arrow, arrow_size)
         right_arrow = pygame.transform.scale(right_arrow, arrow_size)
-        
+
         # Scale dark arrows 
-        dark_arrow_size = (40, 40) 
+        dark_arrow_size = (40, 40)
         left_arrow_dark = pygame.transform.scale(left_arrow_dark, dark_arrow_size)
         right_arrow_dark = pygame.transform.scale(right_arrow_dark, dark_arrow_size)
     except Exception as e:
         print(f"Warning: Could not load arrow images: {e}")
         left_arrow = None
-    
-    
+
     hover_scale = {
         "play": 1.0,
         "high": 1.0,
@@ -196,7 +209,7 @@ def main_menu():
 
     running = True
     while running:
-        
+
         # Background
         if menu_background:
             screen.blit(pygame.transform.scale(menu_background, (SCREEN_WIDTH, SCREEN_HEIGHT)), (0, 0))
@@ -215,7 +228,7 @@ def main_menu():
         mouse_pos = pygame.mouse.get_pos()
         hover_any = False
 
-    # Draw buttons with images
+        # Draw buttons with images
         button_data = [
             ("play", play_button_img, play_rect),
             ("high", highscores_button_img, high_rect),
@@ -228,11 +241,11 @@ def main_menu():
             if button_img:
                 hovered = button_rect.collidepoint(mouse_pos)
                 hover_any = hover_any or hovered
-                
+
                 # Smooth scale animation on hover
                 target = 1.1 if hovered else 1.0
                 hover_scale[name] += (target - hover_scale[name]) * 0.15
-                
+
                 scale = hover_scale[name]
                 if scale != 1.0:
                     # Scale the button
@@ -243,18 +256,18 @@ def main_menu():
                     screen.blit(scaled_img, scaled_rect)
                 else:
                     # Draw normal size
-                    screen.blit(button_img, button_rect)    
+                    screen.blit(button_img, button_rect)
 
-        # Draw "Select Player" section (right side)
+                    # Draw "Select Player" section (right side)
         select_x = SCREEN_WIDTH - 450
         select_y = 350
-        
+
         # Draw "Select Player" image/title (smaller)
         if select_player_img:
             smaller_select = pygame.transform.scale(select_player_img, (250, 50))
             screen.blit(smaller_select, (select_x, select_y))
             title_width = 250  # Width of the select player image
-        
+
         # Draw character NAME centered under "Select Player" title
         try:
             name_font = pygame.font.Font("media/graphics/font/Pixeboy.ttf", 36)
@@ -263,7 +276,7 @@ def main_menu():
         character_name = name_font.render(characters[selected_character]["name"], True, (100, 200, 255))
         name_x = select_x + (title_width // 2) - (character_name.get_width() // 2)  # Center it
         screen.blit(character_name, (name_x, select_y + 70))
-        
+
         # Draw character image SMALLER and centered under the name
         if character_images[selected_character]:
             # Make character smaller
@@ -274,13 +287,13 @@ def main_menu():
 
         # Draw arrows (already scaled at load time)
         arrow_y = select_y + 135
-        
+
         # Left arrow position
         left_arrow_x = select_x - 40
-        
+
         # Right arrow position
         right_arrow_x = select_x + 250
-        
+
         # Left arrow (dark if on first character)
         if selected_character == 0:
             if left_arrow_dark:
@@ -288,7 +301,7 @@ def main_menu():
         else:
             if left_arrow:
                 screen.blit(left_arrow, (left_arrow_x, arrow_y))
-        
+
         # Right arrow (dark if on last character)
         if selected_character == len(characters) - 1:
             if right_arrow_dark:
@@ -343,26 +356,26 @@ def main_menu():
 
                 # Arrow click handling
                 # Left arrow - go to previous character
-                elif selected_character > 0:  
+                elif selected_character > 0:
                     left_arrow_rect = pygame.Rect(select_x - 40, select_y + 120, 40, 40)
                     if left_arrow_rect.collidepoint(event.pos):
                         if menu_click_sound and current_sfx_volume() > 0:
                             menu_click_sound.set_volume(current_sfx_volume())
                             menu_click_sound.play()
                         selected_character -= 1
-                        #Save to config 
+                        # Save to config
                         config["last_character"] = selected_character
                         save_config()
-                
+
                 # Right arrow - go to next character
-                if selected_character < len(characters) - 1:  
+                if selected_character < len(characters) - 1:
                     right_arrow_rect = pygame.Rect(select_x + 250, select_y + 120, 40, 40)
                     if right_arrow_rect.collidepoint(event.pos):
                         if menu_click_sound and current_sfx_volume() > 0:
                             menu_click_sound.set_volume(current_sfx_volume())
                             menu_click_sound.play()
                         selected_character += 1
-                        #Save to config 
+                        # Save to config
                         config["last_character"] = selected_character
                         save_config()
 

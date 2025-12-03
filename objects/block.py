@@ -1,35 +1,48 @@
-import pygame
+"""
+This file creates the Brick object for the game.
+It loads the brick images, sets the brick size and color,
+and updates how the brick looks when it takes damage.
+"""
+
 import os
+import pygame
 from common import COLORS, ROOT_PATH
 
-# Load brick images
+# Image caches for each brick type.
+# Images load once and are reused for speed.
 brick_images_1 = {}
 brick_images_2 = {}
 
-# new sizes
-BRICK1_SIZE = (60, 25)
-BRICK2_SIZE = (35, 35)
+# Brick sizes
+BRICK1_SIZE = (60, 25)   # Normal rectangle brick
+BRICK2_SIZE = (35, 35)   # Square stronger brick
 
-color_names = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'cyan']
-main_path = os.path.join(ROOT_PATH, 'media', 'graphics', 'bricks')
+color_names = ["red", "orange", "yellow", "green", "blue", "purple", "cyan"]
+main_path = os.path.join(ROOT_PATH, "media", "graphics", "bricks")
 
 
+# ---------- IMAGE LOADING ---------- #
+# Load all brick images one time so each block does not reload them.
 def load_all_images():
-    """Load every brick image one time only (not once per block)."""
     if brick_images_1:
-        return
+        return  # Already loaded
 
     global crack_overlay_img
     crack_path = os.path.join(main_path, "crack_overlay.png")
+
+    # Load cracked overlay for damaged 2-hit bricks
     if os.path.isfile(crack_path):
         crack_overlay_img = pygame.image.load(crack_path).convert_alpha()
-        crack_overlay_img = pygame.transform.scale(crack_overlay_img, BRICK2_SIZE)
+        crack_overlay_img = pygame.transform.scale(
+            crack_overlay_img, BRICK2_SIZE
+        )
     else:
         crack_overlay_img = None
 
+    # Load normal and square bricks for all colors
     for i, color_name in enumerate(color_names):
 
-        # ---------- Brick 1 (normal) ----------
+        # Normal brick image
         file1 = f"{color_name}-brick.png"
         path1 = os.path.join(main_path, file1)
 
@@ -40,7 +53,7 @@ def load_all_images():
             brick_images_1[COLORS[i]] = None
             print(f"Warning: Missing {file1}")
 
-        # ---------- Brick 2 (square) ----------
+        # Square brick image (used for stronger bricks)
         file2 = f"{color_name}-brick-2.png"
         path2 = os.path.join(main_path, file2)
 
@@ -51,78 +64,58 @@ def load_all_images():
             brick_images_2[COLORS[i]] = None
 
 
-def make_damaged(image):
-    """Make a darker/damaged version without numpy."""
-    if image is None:
-        return None
-
-    dull = image.copy()
-    overlay = pygame.Surface(dull.get_size(), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 120))
-    dull.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
-    return dull
-
-
+# ---------- BLOCK CLASS ---------- #
+# Represents a single brick in the game.
 class Block:
+    # Set up brick size, image, color, and hit points.
     def __init__(self, x, y, color, block_type=1):
-        """
-        block_type:
-            1 = normal 1-HP brick
-            2 = square 2-HP brick
-        """
         load_all_images()
 
-        # pick size
+        # Pick size based on brick strength
         if block_type == 2:
-            self.width, self.height = BRICK2_SIZE
+            self.width, self.height = BRICK2_SIZE  # Stronger square brick
         else:
-            self.width, self.height = BRICK1_SIZE
+            self.width, self.height = BRICK1_SIZE  # Normal rectangle brick
 
-        # position is now given as TOP-LEFT
+        # Rectangle position
         self.rect = pygame.Rect(x, y, self.width, self.height)
         self.color = color
         self.block_type = block_type
 
-        # ------- Load correct base image -------
+        # Select base image and hit points
         if block_type == 2 and brick_images_2[color] is not None:
             base_image = brick_images_2[color]
-            self.hp = 2
+            self.hp = 2  # Strong brick takes 2 hits
         else:
             base_image = brick_images_1[color]
             self.hp = 1
 
-        self.max_hp = self.hp
+        self.max_hp = self.hp  # Store original HP
 
-        # scale image correctly to its own size
+        # Scale brick image to match size
         if base_image is not None:
-            self.image = pygame.transform.scale(base_image, (self.width, self.height))
+            self.image = pygame.transform.scale(
+                base_image, (self.width, self.height)
+            )
         else:
             self.image = None
 
-        # damaged version for 2HP bricks only
-        if self.hp == 2 and self.image is not None:
-            if crack_overlay_img:
-                damaged = self.image.copy()
-                damaged.blit(crack_overlay_img, (0, 0))
-                self.image_damaged = damaged
-            else:
-                self.image_damaged = make_damaged(self.image)
+        # Create cracked version for 2-hit bricks
+        if self.hp == 2 and self.image is not None and crack_overlay_img:
+            damaged = self.image.copy()
+            damaged.blit(crack_overlay_img, (0, 0))
+            self.image_damaged = damaged
         else:
             self.image_damaged = None
 
-    # Called when hit
+    # Handle brick damage and swap to cracked image.
     def hit(self):
-        """
-        Returns True if block should be destroyed.
-        Returns False if block stays (e.g., 2HP becomes 1HP).
-        """
         if self.hp <= 1:
-            return True
+            return True  # Brick breaks
 
-        # reduce HP
-        self.hp -= 1
+        self.hp -= 1  # Lose one hit point
 
-        # switch to damaged image
+        # Switch to cracked image if available
         if self.image_damaged:
             self.image = self.image_damaged
 
