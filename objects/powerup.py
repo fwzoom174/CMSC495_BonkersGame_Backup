@@ -8,7 +8,6 @@ import pygame
 import os
 from common import ROOT_PATH, SCREEN_HEIGHT
 
-
 # ---------- POWERUP CLASS ---------- #
 # Power up object that falls toward the player.
 class PowerUp:
@@ -54,7 +53,26 @@ class PowerUp:
                         ROOT_PATH, "media", "graphics", "Particles", "big paddle.png"
                     )
                 )
+            elif powerup_type == "slow":
+                img = pygame.image.load(
+                    os.path.join(
+                        ROOT_PATH, "media", "graphics", "Particles", "slow.png"
+                    )
+                )
 
+            elif powerup_type == "shield":
+                img = pygame.image.load(
+                    os.path.join(
+                        ROOT_PATH, "media", "graphics", "Particles", "shield.png"
+                    )
+                )
+
+            elif powerup_type == "reverse":
+                img = pygame.image.load(
+                    os.path.join(
+                        ROOT_PATH, "media", "graphics", "Particles", "reverse.png"
+                    )
+                )
             self.image = pygame.transform.scale(img, (self.width, self.height))
 
         except Exception as e:
@@ -71,7 +89,7 @@ class PowerUp:
     # ---------- MOVEMENT ---------- #
     # Move the power up downward.
     def update(self):
-        self.y += self.velocity_y
+        self.y += self.velocity_y * slow_multiplier
         self.rect.x = self.x
         self.rect.y = self.y
 

@@ -1,7 +1,7 @@
 {
   "tutorial_enabled": true,
-  "show_fps": true,
-  "mouse_enabled": true,
+  "show_fps": false,
+  "mouse_enabled": false,
   "last_character": 0,
   "sound_volume": 3,
   "music_volume": 3

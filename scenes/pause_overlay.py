@@ -84,9 +84,9 @@ def pause_overlay(snapshot):
 
         # Create the text to display
         title = font_big.render("PAUSED", True, YELLOW)
-        quit_text = font_small.render("Press Q to Quit", True, WHITE)
-        or_text = font_small.render("or", True, WHITE)
-        resume_text = font_small.render("Press Space Bar to Resume", True, WHITE)
+        quit_text = font_small.render("Press Q to Quit", True, (0, 255, 255))
+        or_text = font_small.render("or", True, (0, 255, 255))
+        resume_text = font_small.render("Press Space Bar to Resume", True, (0, 255, 255))
 
         # Draw centered text
         screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, SCREEN_HEIGHT // 2 - 150))

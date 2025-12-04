@@ -236,7 +236,7 @@ def show_high_scores(screen):
         draw_table(left_x, today_scores)
         draw_table(right_x, all_time_scores)
 
-        footer_text = text_font.render("PRESS ESC TO RETURN", True, (220, 20, 60))
+        footer_text = text_font.render("BACK (ESC)", True, (220, 20, 60))
         screen.blit(
             footer_text,
             (SCREEN_WIDTH // 2 - footer_text.get_width() // 2, SCREEN_HEIGHT - 175)

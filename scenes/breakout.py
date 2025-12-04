@@ -84,9 +84,25 @@ paddle_state = "normal"
 paddle_state_timer = 0
 paddle_power_duration = 300  # shared duration for paddle size effects
 
+slow_active = False
+slow_timer = 0
+slow_on_screen = False
+slow_ramp = 1.0
+
+shield_active = False
+shield_rect = None
+shield_on_screen = False
+
+reverse_active = False
+reverse_timer = 0
+reverse_duration = 5000
+reverse_on_screen = False
+
 balls = []
 ball_image = None
 last_hit_ball = None  # remembers last ball that touched paddle for triple-ball logic
+ball_position = None
+ball_velocity = None
 
 # --- Debug + Tutorial ---
 debug_countdown_mode = False
@@ -161,6 +177,11 @@ def current_volume():
     except:
         return 1.0
 
+# Slow Time multiplier
+def slow_factor():
+    if not slow_active:
+        return 1.0
+    return 0.5
 
 # --- Drop Rates ---
 DROP_TABLE = {
@@ -169,7 +190,10 @@ DROP_TABLE = {
     "blast": 0.10,
     "small_paddle": 0.05,
     "big_paddle": 0.10,
-    "nothing": 0.35
+    "slow": 0.05,
+    "shield": 0.05,
+    "reverse": 0.05,
+    "nothing": 0.20
 }
 
 
@@ -350,6 +374,7 @@ def main_controller(screen, debug_mode="", character_image=None):
     """Handles level flow, debug modes, transitions, and win/lose state."""
     global tutorial_active, tutorial_timer, tutorial_phase, cfg, game_timer, level_timer
     global paddle_state, paddle_state_timer
+    global slow_timer, reverse_timer
 
     init(character_image)
 
@@ -503,6 +528,9 @@ def main_controller(screen, debug_mode="", character_image=None):
                     # Prepare next level
                     reset_all_effects(blasts, coins, powerups, particles)
 
+                    slow_timer = 0
+                    reverse_timer = 0
+
                     blocks = define_blocks(screen, level)
 
                     # Configure new level timer
@@ -539,6 +567,9 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
     global ball_position, pause_requested, delta_time, blast_active, blast_timer
     global level_timer, ball_image
     global paddle_state, paddle_state_timer
+    global slow_active, slow_timer, slow_ramp, slow_on_screen
+    global shield_active, shield_rect, shield_on_screen
+    global reverse_active, reverse_timer, reverse_on_screen
 
     show_fps = (debug_mode is not False) or cfg.get("show_fps", False)
 
@@ -566,11 +597,15 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
     elif isinstance(game_timer_ref, Timer):
         game_timer_ref.draw()
 
-    # If first ball not launched yet → reset positions each frame
+        # If first ball not launched yet → reset positions each frame
     if not balls:
         reset_all_effects(blasts, coins, powerups, particles)
 
-    # Input: returns False if user quits
+        # Safety: make sure balls[0] exists
+    if not balls:
+        return "quit"
+
+        # Input: returns False if user quits
     if not handle_input(bar, balls[0]):
         return "quit"
 
@@ -599,6 +634,9 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
         else:
             tutorial_active = False  # hide tutorial
 
+    if shield_active and shield_rect:
+        pygame.draw.rect(screen, (0, 180, 255), shield_rect)
+
     # ---------- PARTICLES ----------
     for particle in particles[:]:
         particle.update()
@@ -608,7 +646,8 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
 
     # ---------- COINS ----------
     for coin in coins[:]:
-        coin.update()
+        coin.y += coin.velocity_y * slow_ramp
+        coin.rect.y = coin.y
         coin.draw(screen)
         if coin.is_off_screen():
             coins.remove(coin)
@@ -623,9 +662,17 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
 
     # ---------- POWERUPS ----------
     for powerup in powerups[:]:
-        powerup.update()
+        powerup.y += powerup.velocity_y * slow_ramp
+        powerup.rect.y = powerup.y
         powerup.draw(screen)
         if powerup.is_off_screen():
+            if powerup.type == "slow":
+                slow_on_screen = False
+            elif powerup.type == "shield":
+                shield_on_screen = False
+            elif powerup.type == "reverse":
+                reverse_on_screen = False
+
             powerups.remove(powerup)
 
     # Paddle collects a falling powerup
@@ -645,6 +692,24 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
             elif powerup.type == "big_paddle":
                 paddle_state = "big"
                 paddle_state_timer = paddle_power_duration
+            elif powerup.type == "slow":
+                slow_active = True
+                slow_timer = pygame.time.get_ticks()
+                slow_ramp = 1.0
+                slow_on_screen = False
+            elif powerup.type == "shield":
+                shield_active = True
+                shield_on_screen = False
+                shield_rect = pygame.Rect(
+                    0,
+                    SCREEN_HEIGHT - 60,
+                    SCREEN_WIDTH,
+                    10
+                )
+            elif powerup.type == "reverse":
+                reverse_active = True
+                reverse_timer = pygame.time.get_ticks()
+                reverse_on_screen = False
 
             if coin_sound:
                 coin_sound.play()
@@ -709,6 +774,17 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
                     elif drop == "big_paddle":
                         powerups.append(PowerUp(block.rect.centerx - 15,
                                                 block.rect.centery, "big_paddle"))
+                    elif drop == "slow" and not slow_on_screen and not slow_active:
+                        powerups.append(PowerUp(block.rect.centerx - 15,
+                                                block.rect.centery, "slow"))
+                        slow_on_screen = True
+                    elif drop == "shield" and not shield_on_screen and not shield_active:
+                        powerups.append(PowerUp(block.rect.centerx - 15,
+                                                block.rect.centery, "shield"))
+                        shield_on_screen = True
+                    elif drop == "reverse":
+                        powerups.append(PowerUp(block.rect.centerx - 15,
+                                                block.rect.centery, "reverse"))
 
                     blocks.remove(block)
                     scoreboard.add_points(50)
@@ -767,6 +843,23 @@ def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level,
         game_timer.update()
     if isinstance(level_timer, Timer):
         level_timer.update()
+
+    # ---------- Slow Time timing logic ----------
+    if slow_active:
+        elapsed = pygame.time.get_ticks() - slow_timer
+
+        if elapsed < 1000:
+            slow_ramp = max(0.5, 1.0 - (elapsed / 2000))
+        elif elapsed < 4000:
+            slow_ramp = 0.5
+        else:
+            slow_ramp = min(1.0, 0.5 + ((elapsed - 4000) / 2000))
+            if slow_ramp >= 0.99:
+                slow_active = False
+                slow_ramp = 1.0
+
+    if reverse_active and pygame.time.get_ticks() - reverse_timer > reverse_duration:
+        reverse_active = False
 
     # ---------- FPS DISPLAY ----------
     if show_fps:
@@ -848,7 +941,7 @@ def define_blocks(screen, level, wall_padding=WALL_PADDING):
 
 def handle_input(bar, main_ball):
     """Keyboard + mouse handling, launch logic, paddle movement."""
-    global pause_requested, bar_x, tutorial_active
+    global pause_requested, bar_x, tutorial_active, reverse_active
 
     mouse_enabled = cfg.get("mouse_enabled", False)
 
@@ -993,17 +1086,28 @@ def handle_input(bar, main_ball):
         min_x = WALL_PADDING - edge_adjust
         max_x = SCREEN_WIDTH - WALL_PADDING - current_width + edge_adjust
 
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            bar_x = max(bar_x - speed, min_x)
+        move_left = keys[pygame.K_LEFT] or keys[pygame.K_a]
+        move_right = keys[pygame.K_RIGHT] or keys[pygame.K_d]
 
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+        if reverse_active:
+            if pygame.time.get_ticks() - reverse_timer > reverse_duration:
+                reverse_active = False
+            else:
+                move_left, move_right = move_right, move_left
+
+        if move_left:
+            bar_x = max(bar_x - speed, min_x)
+        if move_right:
             bar_x = min(bar_x + speed, max_x)
 
     # ---------- MOUSE MOVEMENT ----------
     if mouse_enabled:
         mx = pygame.mouse.get_pos()[0]
-        target_x = mx - (paddle_width // 2)
 
+        if reverse_active and main_ball["vel"].length() != 0:
+            mx = SCREEN_WIDTH - mx
+
+        target_x = mx - (paddle_width // 2)
         current_width = int(getattr(draw_bar, "width", BAR_WIDTH))
 
         # Pre-launch limits
@@ -1018,7 +1122,6 @@ def handle_input(bar, main_ball):
                 WALL_PADDING,
                 min(target_x, SCREEN_WIDTH - WALL_PADDING - current_width)
             )
-
         # Smooth mouse movement
         screen_distance = (SCREEN_WIDTH - WALL_PADDING * 2 - paddle_width)
         frames_needed = 120
@@ -1035,6 +1138,7 @@ def handle_input(bar, main_ball):
 # ================= Movement & Physics =================
 # Handles ball movement, wall bouncing, and paddle collisions.
 def move_ball(screen, walls, bar, balls_list):
+    global shield_active, shield_rect, slow_ramp, shield_used
     if balls_list[0]["vel"].length() == 0:
         if not tutorial_active:
             msg = font.render("PRESS [SPACE] TO BEGIN", True, (255, 255, 0))
@@ -1048,10 +1152,24 @@ def move_ball(screen, walls, bar, balls_list):
     for b in balls_list[:]:
         steps = 3
         for _ in range(steps):
-            b["pos"] += b["vel"] / steps
+            b["pos"] += (b["vel"] * slow_ramp) / steps
 
         wall_check_multi(b, walls)
         paddle_check_multi(b, bar)
+
+        if shield_active:
+            ball_box = pygame.Rect(
+                b["pos"].x - ball_radius,
+                b["pos"].y - ball_radius,
+                ball_radius * 2,
+                ball_radius * 2
+            )
+
+            if shield_rect and shield_rect.colliderect(ball_box):
+                b["vel"].y *= -1
+                b["pos"].y = shield_rect.top - ball_radius - 1
+                shield_active = False
+                shield_used = True
 
         if b["pos"].y - ball_radius > SCREEN_HEIGHT:
             balls_list.remove(b)
@@ -1117,6 +1235,9 @@ def get_x_angle(bar, ball_dict):
 # ================= Collision & Drops =================
 def detect_collision(blocks, particles, coins, powerups, scoreboard):
     global balls, blast_active
+    global slow_on_screen, slow_active
+    global shield_on_screen, shield_active
+    global reverse_active, reverse_on_screen
 
     score_increase = 0
 
@@ -1164,6 +1285,17 @@ def detect_collision(blocks, particles, coins, powerups, scoreboard):
                     powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "small_paddle"))
                 elif drop == "big_paddle":
                     powerups.append(PowerUp(block.rect.centerx - 15, block.rect.centery, "big_paddle"))
+                elif drop == "slow" and not slow_on_screen and not slow_active:
+                    powerups.append(PowerUp(block.rect.centerx - 15,
+                    block.rect.centery, "slow"))
+                    slow_on_screen = True
+                elif drop == "shield" and not shield_on_screen and not shield_active:
+                    powerups.append(PowerUp(block.rect.centerx - 15,
+                  block.rect.centery, "shield"))
+                    shield_on_screen = True
+                elif drop == "reverse":
+                    powerups.append(PowerUp(block.rect.centerx - 15,
+                    block.rect.centery, "reverse"))
 
                 blocks.remove(block)
 
@@ -1264,7 +1396,13 @@ def draw_bar(screen):
     # Color-tint paddle during size power-ups
     state = paddle_state
 
-    if paddle_state in ("small", "big") and paddle_image:
+    if reverse_active and paddle_image:
+        tinted = paddle_image.copy()
+        tinted.fill((0, 0, 0), special_flags=pygame.BLEND_RGB_MULT)
+        tinted.fill((255, 0, 0), special_flags=pygame.BLEND_RGB_ADD)
+        current_img = tinted
+
+    elif paddle_state in ("small", "big") and paddle_image:
         tinted = paddle_image.copy()
         tinted.fill((0, 0, 0), special_flags=pygame.BLEND_RGB_MULT)
         if paddle_state == "small":
@@ -1272,6 +1410,7 @@ def draw_bar(screen):
         else:
             tinted.fill((40, 140, 255), special_flags=pygame.BLEND_RGB_ADD)
         current_img = tinted
+
     else:
         current_img = paddle_image
 
@@ -1399,6 +1538,9 @@ def reset_all_effects(blasts, coins, powerups, particles):
     global blast_active, blast_timer
     global paddle_state, paddle_state_timer
     global last_hit_ball
+    global shield_active, shield_rect, shield_used, shield_on_screen
+    global slow_active, slow_ramp, slow_on_screen
+    global reverse_active, reverse_on_screen
 
     # Reset all effect states
     blast_active = False
@@ -1406,6 +1548,17 @@ def reset_all_effects(blasts, coins, powerups, particles):
     paddle_state = "normal"
     paddle_state_timer = 0
     last_hit_ball = None
+
+    shield_active = False
+    shield_rect = None
+    shield_on_screen = False
+
+    slow_active = False
+    slow_ramp = 1.0
+    slow_on_screen = False
+
+    reverse_active = False
+    reverse_on_screen = False
 
     # Reset paddle visuals
     draw_bar.width = original_paddle_width
@@ -1433,6 +1586,7 @@ def update_scoreboard(screen, scoreboard, timer, blasts, coins, powerups, partic
     global ball_position, ball_velocity, bar_x
     global blast_active, blast_timer
     global paddle_state, paddle_state_timer
+    global slow_timer, reverse_timer
 
     # Player loses one life
     scoreboard.lose_life()
@@ -1492,3 +1646,4 @@ def pause_game(screen):
             unpause_sound.set_volume(current_volume())
             unpause_sound.play()
         return True
+    return True

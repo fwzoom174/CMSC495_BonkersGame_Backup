@@ -685,21 +685,27 @@ def show_how_to_play(screen):
         pygame.draw.rect(screen, (0, 255, 255), underline_rect)
 
         lines = [
-            "Use the SPACE bar to launch the ball on a new life.",
+            "Use the SPACE bar to launch the ball.",
             "Use the arrow keys or A/D to move the paddle.",
-            "Bounce the ball to break all the blocks.",
+            "You can turn on mouse control in the settings and click to launch the ball.",
+            "Break all the blocks to clear each level.",
+            "Collect coins for extra points.",
+            "Pick up power-ups to gain helpful effects.",
+            "Watch out for power-downs that make the game harder.",
+            "Level 5 is a boss fight with special rules.",
+            "Character skins can be selected on the main menu.",
             "You have 3 lives. The game ends when they run out.",
             "Press ESC to pause the game.",
         ]
 
         y = 260
         for line in lines:
-            txt = small.render(line, True, WHITE)
+            txt = small.render(line, True, (255, 80, 180))
             screen.blit(txt, (SCREEN_WIDTH // 2 - txt.get_width() // 2, y))
             y += 50
 
-        back = small.render("Press ESC to return", True, RED)
-        screen.blit(back, (SCREEN_WIDTH // 2 - back.get_width() // 2, 550))
+        back = small.render("BACK (ESC)", True, RED)
+        screen.blit(back, (SCREEN_WIDTH // 2 - back.get_width() // 2, 800))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -727,7 +733,7 @@ def show_credits(screen):
         draw_retro_background(screen)
 
         # ESC at the top center
-        esc = small.render("Press ESC to return", True, RED)
+        esc = small.render("BACK (ESC)", True, RED)
         esc_rect = esc.get_rect(center=(SCREEN_WIDTH // 2, 50))
         screen.blit(esc, esc_rect)
 
