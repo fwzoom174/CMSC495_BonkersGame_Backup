@@ -19,6 +19,14 @@ def load_all_images():
     if brick_images_1:
         return
 
+    global crack_overlay_img
+    crack_path = os.path.join(main_path, "crack_overlay.png")
+    if os.path.isfile(crack_path):
+        crack_overlay_img = pygame.image.load(crack_path).convert_alpha()
+        crack_overlay_img = pygame.transform.scale(crack_overlay_img, BRICK2_SIZE)
+    else:
+        crack_overlay_img = None
+
     for i, color_name in enumerate(color_names):
 
         # ---------- Brick 1 (normal) ----------
@@ -93,7 +101,12 @@ class Block:
 
         # damaged version for 2HP bricks only
         if self.hp == 2 and self.image is not None:
-            self.image_damaged = make_damaged(self.image)
+            if crack_overlay_img:
+                damaged = self.image.copy()
+                damaged.blit(crack_overlay_img, (0, 0))
+                self.image_damaged = damaged
+            else:
+                self.image_damaged = make_damaged(self.image)
         else:
             self.image_damaged = None
 

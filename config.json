@@ -1,10 +1,9 @@
 {
-  "tutorial_enabled": false,
-  "tutorial_has_run": false,
-  "sound_enabled": false,
-  "music_enabled": false,
+  "tutorial_enabled": true,
   "show_fps": false,
   "mouse_enabled": false,
   "colorblind_mode": false,
   "last_character": 3
+  "sound_volume": 3,
+  "music_volume": 3
 }
