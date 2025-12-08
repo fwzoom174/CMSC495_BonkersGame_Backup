@@ -27,7 +27,7 @@ Python 3.11+ | PyCharm 3.13+ (IDE) | Pygame |  Windows OS
 
 ## Assets
 
-Audio from [Rubberduck] (https://opengameart.org/users/rubberduck), [LeohPaz](https://opengameart.org/users/leohpaz), [Jalastram] (https://opengameart.org/users/jalastram) [Dklon] (https://opengameart.org/users/dklon), and [Joth] (https://opengameart.org/users/jothon) on [OpenGameArt] (https://opengameart.org), and [Pixabay](https://pixabay.com/service/license-summary/) and additional audio sourced from [Pixabay](https://pixabay.com/service/license-summary/)
+Audio from [Rubberduck](https://opengameart.org/users/rubberduck), [LeohPaz](https://opengameart.org/users/leohpaz), and [Jalastram] (https://opengameart.org/users/jalastram) on [OpenGameArt] [Dklon] (https://opengameart.org/users/dklon) on (https://opengameart.org) and [Pixabay](https://pixabay.com/service/license-summary/) and additional audio sourced from [Pixabay](https://pixabay.com/service/license-summary/).
 
 Particles and Item from [Truezipp] (https://opengameart.org/users/truezipp), [Vircon32] (https://opengameart.org/users/vircon32), [NicoleMarieton] (https://opengameart.org/users/nicolemariet-0), and [DevWizard] (https://opengameart.org/users/devwizard) on [OpenGameArt](https://opengameart.org)
 

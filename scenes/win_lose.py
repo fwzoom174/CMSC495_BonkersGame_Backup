@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+import json
 from common import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, RED, ORANGE, ROOT_PATH
 
 # Initialize Pygame
@@ -23,6 +24,22 @@ except:
 # Colors
 BLUE = (18, 89, 202)
 YELLOW = (254, 175, 54)
+
+config_path = "config.json"
+
+def current_sfx_volume():
+    try:
+        with open(config_path, "r") as f:
+            cfg_local = json.load(f)
+        level = cfg_local.get("sound_volume", 5)
+        try:
+            level = int(level)
+        except:
+            level = 5
+        level = max(0, min(5, level))
+        return level / 5.0
+    except:
+        return 1.0
 
 # ---------- FONT & GRAPHICS UTILITIES ----------
 def load_custom_font(size, bold=False):
@@ -146,6 +163,10 @@ def get_player_initials(screen, score):
 
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
+                vol = current_sfx_volume()
+                if menu_click_sound and vol > 0:
+                    menu_click_sound.set_volume(vol)
+                    menu_click_sound.play()
                 pygame.quit()
                 sys.exit()
             elif ev.type == pygame.KEYDOWN:
@@ -165,9 +186,13 @@ def end_screen(screen, win=True, score=500):
     pygame.mouse.set_visible(True)
     pygame.display.set_caption("Congratulations!" if win else "Game Over")
 
-    if win and win_sound:
+    vol = current_sfx_volume()
+
+    if win and win_sound and vol > 0:
+        win_sound.set_volume(vol)
         win_sound.play()
-    elif not win and game_over_sound:
+    elif not win and game_over_sound and vol > 0:
+        game_over_sound.set_volume(vol)
         game_over_sound.play()
 
     full_text = "YOU WIN!" if win else "GAME OVER"
@@ -251,22 +276,30 @@ def end_screen(screen, win=True, score=500):
                     buttons_alpha = 255
                 elif event.key in [pygame.K_LEFT, pygame.K_a]:
                     selected = "YES"
-                    if menu_click_sound:
+                    vol = current_sfx_volume()
+                    if menu_click_sound and vol > 0:
+                        menu_click_sound.set_volume(vol)
                         menu_click_sound.play()
                 elif event.key in [pygame.K_RIGHT, pygame.K_d]:
                     selected = "NO"
-                    if menu_click_sound:
+                    vol = current_sfx_volume()
+                    if menu_click_sound and vol > 0:
+                        menu_click_sound.set_volume(vol)
                         menu_click_sound.play()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if yes_button and yes_button.collidepoint(event.pos):
-                    if menu_click_sound:
+                    vol = current_sfx_volume()
+                    if menu_click_sound and vol > 0:
+                        menu_click_sound.set_volume(vol)
                         menu_click_sound.play()
                     pygame.display.flip()
                     pygame.time.wait(1000)
                     return True, initials
                 elif no_button and no_button.collidepoint(event.pos):
-                    if menu_click_sound:
+                    vol = current_sfx_volume()
+                    if menu_click_sound and vol > 0:
+                        menu_click_sound.set_volume(vol)
                         menu_click_sound.play()
                     pygame.display.flip()
                     pygame.time.wait(1000)

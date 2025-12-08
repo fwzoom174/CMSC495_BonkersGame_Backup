@@ -12,6 +12,14 @@ class PowerUp:
         self.velocity_y = 4
         self.type = powerup_type  # "blast", "small_paddle", "triple_ball", "big_paddle", "fireball"
 
+        # --- Triple Ball size update ---
+        if powerup_type == "triple_ball":
+            self.width = 60
+            self.height = 60
+        else:
+            self.width = 30
+            self.height = 30
+
         # Load power-up image
         self.image = None
         try:
