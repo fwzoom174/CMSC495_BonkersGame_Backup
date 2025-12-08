@@ -69,6 +69,14 @@ blast_active = False
 blast_timer = 0
 blast_duration = 300
 
+paddle_shrink_active = False
+paddle_shrink_timer = 0
+paddle_shrink_duration = 300
+
+paddle_big_active = False
+paddle_big_timer = 0
+paddle_big_duration = 300
+
 paddle_state = "normal"
 paddle_state_timer = 0
 paddle_power_duration = 300
@@ -540,8 +548,12 @@ def main_controller(screen, debug_mode="", character_image=None):
 
 def game_loop(screen, scoreboard, game_timer_ref, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration, explosion_manager, cfg):
     global ball_position, pause_requested, delta_time, blast_active, blast_timer
+    global level_timer, ball_image
     global fireball_active, fireball_timer
     global paddle_state, paddle_state_timer
+    global paddle_shrink_active, paddle_shrink_timer
+    global paddle_big_active, paddle_big_timer
+    show_fps = (debug_mode is not False) or cfg.get("show_fps", False)
 
     walls = draw_wall(screen)
     bar = draw_bar(screen)
