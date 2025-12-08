@@ -443,7 +443,7 @@ def main_controller(screen, debug_mode="", character_image=None):
     fireball_timer = 0
     running = True
     while running:
-        status = game_loop(screen, scoreboard, game_timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration, explosion_manager, cfg)
+        status = game_loop(screen, scoreboard, game_timer, blocks, debug_mode, level, particles, coins, powerups, blasts, blast_duration, explosion_manager)
 
 
         if status == "running":
