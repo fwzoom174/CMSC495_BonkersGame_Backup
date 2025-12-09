@@ -29,7 +29,6 @@ You can build levels in two ways:
 You can mix both styles in the same level.
 
 Notes:
-    - Orange does not have a square version, so (2,1) becomes a normal brick.
     - Each level must be a list of rows.
 """
 
@@ -74,11 +73,11 @@ level_4 = [
 # ---------- LEVEL 5 (UMGC) ----------
 level_5 = [
     # U
-    [(1,4),0,(1,4),   0,   (2,3),0,(2,3),   0,   (1,2),(1,2),(1,2),   0,   (1,0),(1,0),(1,0)],
-    [(1,4),0,(1,4),   0,   (2,3),(1,3),(2,3), 0, (1,2),0,0,          0,   (2,0),0,0],
-    [(1,4),0,(1,4),   0,   (2,3),0,(2,3),   0,   (1,2),(2,2),(1,2),      0,   (2,0),0,0],
-    [(1,4),0,(1,4),   0,   (2,3),0,(2,3),   0,   (1,2),0,(1,2),          0,   (2,0),0,0],
-    [(1,4),(1,4),(1,4),0,  (2,3),0,(2,3),   0,   (1,2),(1,2),(1,2),     0,   (1,0),(1,0),(1,0)],
+    [(1,4),0,(1,4),     0,   (2,3),0,(2,3),     0,   (1,2),(1,2),(1,2),   0,   (1,0),(1,0),(1,0)],
+    [(1,4),0,(1,4),     0,   (2,3),(1,3),(2,3), 0,   (1,2),0,0,           0,   (2,0),0,0],
+    [(1,4),0,(1,4),     0,   (2,3),0,(2,3),     0,   (1,2),(2,2),(1,2),   0,   (2,0),0,0],
+    [(1,4),0,(1,4),     0,   (2,3),0,(2,3),     0,   (1,2),0,(1,2),       0,   (2,0),0,0],
+    [(1,4),(1,4),(1,4), 0,   (2,3),0,(2,3),     0,   (1,2),(1,2),(1,2),   0,   (1,0),(1,0),(1,0)],
 ]
 
 # ---------- FINAL LEVEL LIST ----------
@@ -98,9 +97,14 @@ LEVEL_SETTINGS = [
     {"timer": "countdown", "time_limit": 60}       # Level 5 (Final boss)
 ]
 
+
+# ---------- LEVEL HELPERS ----------
+# Return how many levels exist.
 def get_level_count():
     return len(LEVEL_LAYOUTS)
 
+
+# Return the brick pattern for a given level number.
 def get_level_pattern(level_number):
     if level_number < 1:
         level_number = 1
@@ -109,6 +113,7 @@ def get_level_pattern(level_number):
     return LEVEL_LAYOUTS[level_number - 1]
 
 
+# Return the settings (timer rules) for a given level number.
 def get_level_settings(level_number):
     if level_number < 1:
         level_number = 1
